@@ -11,7 +11,7 @@ async function init() {
   resize();
 
   const componentsLoaded = [];
-  componentsLoaded.push(setupAudio());
+  componentsLoaded.push(setUpAudio());
   // Push more loading promises.
 
   await Promise.all(componentsLoaded);
