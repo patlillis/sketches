@@ -1,3 +1,3 @@
 # sketches
 
-[01](01/index.html)
+[01](https://patlillis.github.io/sketches/01)
