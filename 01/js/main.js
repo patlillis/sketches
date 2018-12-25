@@ -2,10 +2,13 @@ const BG_COLOR = '#64868e';
 
 let canvas;
 let ctx;
+let startButton;
 
 async function init() {
   canvas = document.getElementById('canvas');
-  ctx = this.canvas.getContext('2d');
+  ctx = canvas.getContext('2d');
+  startButton = document.getElementById('start');
+
   canvas.style.backgroundColor = BG_COLOR;
 
   resize();
@@ -15,8 +18,11 @@ async function init() {
   // Push more loading promises.
 
   await Promise.all(componentsLoaded);
+}
 
+function start() {
   playAudio();
+  startButton.classList.add('hidden');
 }
 
 function resize() {
