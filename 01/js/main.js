@@ -1,28 +1,27 @@
-const BG_COLOR = '#64868e';
+const BG_COLOR = "#64868e";
 
 let canvas;
 let ctx;
 let startButton;
+let audioContextStartedPromise = StartAudioContext(Tone.context, "#start");
 
 async function init() {
-  canvas = document.getElementById('canvas');
-  ctx = canvas.getContext('2d');
-  startButton = document.getElementById('start');
+  canvas = document.getElementById("canvas");
+  ctx = canvas.getContext("2d");
+  startButton = document.getElementById("start");
 
   canvas.style.backgroundColor = BG_COLOR;
 
   resize();
 
-  const componentsLoaded = [];
-  componentsLoaded.push(setUpAudio());
-  // Push more loading promises.
-
-  await Promise.all(componentsLoaded);
+  await setUpAudio();
+  await setUpGui();
 }
 
-function start() {
+async function start() {
+  await audioContextStartedPromise;
   playAudio();
-  startButton.classList.add('hidden');
+  startButton.classList.add("hidden");
 }
 
 function resize() {
