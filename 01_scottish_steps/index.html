@@ -1,0 +1,44 @@
+<html !DOCTYPE>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1 user-scalable=no"
+    />
+    <title>SKETCHES — 01 — Scottish Steps</title>
+
+    <link rel="stylesheet" href="/01_scottish_steps/css/lib/reset.css" />
+    <link rel="stylesheet" href="/01_scottish_steps/css/lib/dat.gui.css" />
+    <link rel="stylesheet" href="/01_scottish_steps/css/main.css" />
+
+    <script
+      type="text/javascript"
+      src="/01_scottish_steps/js/lib/StartAudioContext.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="/01_scottish_steps/js/lib/dat.gui.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="/01_scottish_steps/js/lib/tone.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="/01_scottish_steps/js/easing.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="/01_scottish_steps/js/audio.js"
+    ></script>
+    <script type="text/javascript" src="/01_scottish_steps/js/main.js"></script>
+  </head>
+
+  <body onload="init()" onresize="resize()">
+    <div id="start-wrapper">
+      <button id="start" onclick="start()">START</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+  </body>
+</html>
