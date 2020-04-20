@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "es6",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "typeRoots": ["types", "node_modules/@types"],
+    "baseUrl": ".",
+    "paths": { "*": ["*", "types/*"] }
+  }
+}

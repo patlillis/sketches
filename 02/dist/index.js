@@ -37,7 +37,7 @@
           p.vertex(startX, CANVAS_SIZE);
           p.endShape();
           // Update time.
-          t += sampleNoise(0, 0.007);
+          t += sampleNoise(0, 0.004);
       };
   };
   new p5(sketch);

@@ -40,7 +40,7 @@ const sketch = (p: p5) => {
     p.endShape();
 
     // Update time.
-    t += sampleNoise(0, 0.007);
+    t += sampleNoise(0, 0.004);
   };
 };
 

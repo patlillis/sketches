@@ -26,24 +26,24 @@ async function setUpAudio() {
   });
 
   const descendingLead = players.get("descending_lead");
-  descendingLead.loopEnd = 4;
-  descendingLead.loop = true;
-  descendingLead.sync().start(0);
+  // descendingLead.loopEnd = Tone.Time("1m");
+  // descendingLead.loop = true;
+  descendingLead.sync();
 
   const bass = players.get("bass");
-  bass.loopEnd = 16;
-  bass.loop = true;
-  bass.sync().start(0);
+  // bass.loopEnd = Tone.Time("4m");
+  // bass.loop = true;
+  bass.sync();
 
   const upperLead = players.get("upper_lead");
-  upperLead.loopEnd = 16;
-  upperLead.loop = true;
-  upperLead.sync().start(0);
+  // bass.loopEnd = Tone.Time("4m");
+  // upperLead.loop = true;
+  upperLead.sync();
 
   const bassEcho = players.get("bass_echo");
-  bassEcho.loopEnd = 16;
-  bassEcho.loop = true;
-  bassEcho.sync().start(0);
+  // bass.loopEnd = Tone.Time("4m");
+  // bassEcho.loop = true;
+  bassEcho.sync();
 
   const walking = players.get("walking");
   walking.loop = true;
@@ -66,6 +66,16 @@ async function setUpAudio() {
 
   bass.toMaster();
   walking.toMaster();
+
+  Tone.Transport.scheduleRepeat(() => {
+    descendingLead.restart();
+  }, "2n");
+
+  Tone.Transport.scheduleRepeat(() => {
+    bass.restart();
+    upperLead.restart();
+    bassEcho.restart();
+  }, "4m");
 }
 
 function setUpGui() {

@@ -3,7 +3,6 @@ const BG_COLOR = "#64868e";
 let canvas;
 let ctx;
 let startButton;
-let audioContextStartedPromise = StartAudioContext(Tone.context, "#start");
 
 async function init() {
   canvas = document.getElementById("canvas");
@@ -15,13 +14,13 @@ async function init() {
   resize();
 
   await setUpAudio();
-  await setUpGui();
 }
 
 async function start() {
-  await audioContextStartedPromise;
+  Tone.start();
   playAudio();
   startButton.classList.add("hidden");
+  await setUpGui();
 }
 
 function resize() {
