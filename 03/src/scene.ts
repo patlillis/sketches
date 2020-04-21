@@ -30,14 +30,17 @@ const draw = () => {
   wrapDraw(() => {
     ctx.fillStyle = "red";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  });
 
-  for (const video of params.videos) {
-    wrapDraw(() => {
-      ctx.fillStyle = "black";
+    params.videos.forEach((video) => {
+      ctx.fillStyle = "white";
       ctx.fillRect(video.x, video.y, VIDEO_WIDTH, VIDEO_HEIGHT);
     });
-  }
+
+    params.blocks.forEach((block, index) => {
+      ctx.fillStyle = `rgb(0, 0, ${(index * 100) % 255})`;
+      ctx.fillRect(block.x, block.y, block.width, block.height);
+    });
+  });
 
   // Update random params.
   updateParams();
