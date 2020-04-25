@@ -1,22 +1,12 @@
+import { Block, intersects, Color } from "./types";
 import tombola from "./tombola";
 import * as constants from "./constants";
-import { shuffleArray } from "./utils";
-
-type Video = { x: number; y: number };
-type Block = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-
-  // Whether this block is edging around a specific video.
-  edgingForVideo?: number;
-};
+import { shuffleArray, clamp } from "./utils";
+type Video = { bounds: Block };
 
 type Params = {
   videos: Array<Video>;
-
-  blocks: Array<Block>;
+  blocks: Array<Block & { color: Color }>;
 };
 
 /**
@@ -39,7 +29,7 @@ const getVideoCoordsInQuardrant = (
   screenWidth: number,
   screenHeight: number,
   { leftHalf, topHalf }: { leftHalf: boolean; topHalf: boolean }
-): { x: number; y: number } => {
+): Block => {
   const xOffset = tombola.rangeFloat(
     0,
     screenWidth / 2 - constants.VIDEO_WIDTH - constants.VIDEO_PADDING * 1.5
@@ -56,7 +46,7 @@ const getVideoCoordsInQuardrant = (
     ? yOffset + constants.VIDEO_PADDING
     : yOffset + screenHeight / 2 + constants.VIDEO_PADDING / 2;
 
-  return { x, y };
+  return { x, y, width: constants.VIDEO_WIDTH, height: constants.VIDEO_HEIGHT };
 };
 
 const randomizeVideos = (screenWidth: number, screenHeight: number): void => {
@@ -73,21 +63,21 @@ const randomizeVideos = (screenWidth: number, screenHeight: number): void => {
       leftHalf: singleVideoOnLeft,
       topHalf: tombola.percent(50),
     });
-    params.videos.push(v1Coords);
+    params.videos.push({ bounds: v1Coords });
 
     // Place second video.
     const v2Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: true,
       leftHalf: !singleVideoOnLeft,
     });
-    params.videos.push(v2Coords);
+    params.videos.push({ bounds: v2Coords });
 
     // Place third video.
     const v3Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: false,
       leftHalf: !singleVideoOnLeft,
     });
-    params.videos.push(v3Coords);
+    params.videos.push({ bounds: v3Coords });
   } else {
     // Two rows on top of each other.
     const singleVideoOnTop = tombola.percent(50);
@@ -97,190 +87,160 @@ const randomizeVideos = (screenWidth: number, screenHeight: number): void => {
       leftHalf: tombola.percent(50),
       topHalf: singleVideoOnTop,
     });
-    params.videos.push(v1Coords);
+    params.videos.push({ bounds: v1Coords });
 
     // Place second video.
     const v2Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: !singleVideoOnTop,
       leftHalf: true,
     });
-    params.videos.push(v2Coords);
+    params.videos.push({ bounds: v2Coords });
 
     // Place third video.
     const v3Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: !singleVideoOnTop,
       leftHalf: false,
     });
-    params.videos.push(v3Coords);
+    params.videos.push({ bounds: v3Coords });
   }
 };
 
-const getEdgingBlocksForVideo = (
-  video: Video,
-  videoIndex: number
+const getBlockBounds = (
+  screenWidth: number,
+  screenHeight: number
 ): Array<Block> => {
-  const videoBlocks = [];
+  const blocks: Array<Block> = [];
 
-  // Place left side edging blocks.
-  let blockY =
-    video.y - tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER);
-  while (blockY < video.y + constants.VIDEO_HEIGHT) {
-    const overhangInner = tombola.rangeFloat(
-      0,
-      constants.VIDEO_BLOCK_MAX_OVERHANG_INNER
-    );
-    const overhangOuter = tombola.rangeFloat(
-      0,
-      // Make sure combined overhangs aren't greater than max block size.
-      Math.min(
-        constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER,
-        constants.BLOCK_MAX_SIZE - overhangInner
-      )
-    );
-    const x = video.x - overhangOuter;
-    const width = overhangInner + overhangOuter;
-    const height = tombola.rangeFloat(
-      width / constants.BLOCK_MIN_ASPECT,
-      width / constants.BLOCK_MAX_ASPECT
-    );
-    videoBlocks.push({
-      x,
-      y: blockY,
-      width,
-      height,
-      edgingForVideoIndex: videoIndex,
-    });
+  let previousRow: Array<Block> = [];
+  let index = 0;
+  // Set up initial row based on top of screen.
+  for (let prevX = 0; prevX < screenWidth; index++) {
+    let block: Block;
+    if (prevX === 0) {
+      // First block.
+      block = {
+        x: 0,
+        y: 0 - tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER),
+        width: tombola.rangeFloat(
+          constants.BLOCK_MIN_SIZE,
+          constants.BLOCK_MAX_SIZE
+        ),
+        height: tombola.rangeFloat(
+          constants.BLOCK_MIN_SIZE,
+          constants.BLOCK_MAX_SIZE
+        ),
+      };
+    } else {
+      // Other blocks, set based on previous block.
+      const previousBlock = previousRow[previousRow.length - 1];
+      block = {
+        x:
+          prevX -
+          tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_BLOCK_OVERLAP),
+        y: 0 - tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER),
+        width: tombola.rangeFloat(
+          constants.BLOCK_MIN_SIZE,
+          constants.BLOCK_MAX_SIZE
+        ),
+        height: tombola.rangeFloat(
+          constants.BLOCK_MIN_SIZE,
+          constants.BLOCK_MAX_SIZE
+        ),
+      };
+    }
 
-    blockY += tombola.rangeFloat(
-      height - constants.VIDEO_BLOCK_MAX_BLOCK_OVERLAP,
-      height
-    );
+    prevX = block.x + block.width;
+    previousRow.push(block);
   }
 
-  // Place right side edging blocks.
-  blockY =
-    video.y - tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER);
-  while (blockY < video.y + constants.VIDEO_HEIGHT) {
-    const overhangInner = tombola.rangeFloat(
-      0,
-      constants.VIDEO_BLOCK_MAX_OVERHANG_INNER
-    );
-    const overhangOuter = tombola.rangeFloat(
-      0,
-      // Make sure combined overhangs aren't greater than max block size.
-      Math.min(
-        constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER,
-        constants.BLOCK_MAX_SIZE - overhangInner
-      )
-    );
-    const x = video.x + constants.VIDEO_WIDTH - overhangInner;
-    const width = overhangInner + overhangOuter;
-    const height = tombola.rangeFloat(
-      width / constants.BLOCK_MIN_ASPECT,
-      width / constants.BLOCK_MAX_ASPECT
-    );
-    videoBlocks.push({
-      x,
-      y: blockY,
-      width,
-      height,
-      edgingForVideoIndex: videoIndex,
-    });
+  // Set up subsequent rows based on previous row.
+  let allBlocksInRowOffscreen = false;
+  while (!allBlocksInRowOffscreen) {
+    const newRow: Array<Block> = [];
+    allBlocksInRowOffscreen = true;
 
-    blockY += tombola.rangeFloat(
-      height - constants.VIDEO_BLOCK_MAX_BLOCK_OVERLAP,
-      height
-    );
+    // Do stuff, check if each block is off-screen.
+    let previousRowIndex = 0;
+    index = 0;
+    for (
+      let prevBlockRightSide = 0;
+      prevBlockRightSide < screenWidth;
+      index++
+    ) {
+      const x =
+        prevBlockRightSide -
+        tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_BLOCK_OVERLAP);
+      const width = tombola.rangeFloat(
+        constants.BLOCK_MIN_SIZE,
+        constants.BLOCK_MAX_SIZE
+      );
+
+      // Figure out which blocks of the previous row this block will intersect
+      // with.
+      let previousRowMinBottom = Infinity;
+      while (previousRowIndex < previousRow.length) {
+        const previousRowBlock = previousRow[previousRowIndex];
+        if (previousRowBlock.x > x + width) break;
+
+        previousRowMinBottom = Math.min(
+          previousRowMinBottom,
+          previousRowBlock.y + previousRowBlock.height
+        );
+        previousRowIndex++;
+      }
+      previousRowIndex--;
+      const y =
+        previousRowMinBottom -
+        tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_BLOCK_OVERLAP);
+      const height = tombola.rangeFloat(
+        constants.BLOCK_MIN_SIZE,
+        constants.BLOCK_MAX_SIZE
+      );
+
+      prevBlockRightSide = x + width;
+      if (y < screenHeight) allBlocksInRowOffscreen = false;
+      const block = { x, y, width, height };
+
+      newRow.push(block);
+    }
+    blocks.push(...previousRow);
+    previousRow = newRow;
   }
 
-  // Place top side edging blocks.
-  let blockX =
-    video.x - tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER);
-  while (blockX < video.x + constants.VIDEO_WIDTH) {
-    const overhangInner = tombola.rangeFloat(
-      0,
-      constants.VIDEO_BLOCK_MAX_OVERHANG_INNER
-    );
-    const overhangOuter = tombola.rangeFloat(
-      0,
-      // Make sure combined overhangs aren't greater than max block size.
-      Math.min(
-        constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER,
-        constants.BLOCK_MAX_SIZE - overhangInner
-      )
-    );
-    const y = video.y - overhangOuter;
-    const height = overhangInner + overhangOuter;
-    const width = tombola.rangeFloat(
-      height * constants.BLOCK_MIN_ASPECT,
-      height * constants.BLOCK_MAX_ASPECT
-    );
-    videoBlocks.push({
-      x: blockX,
-      y,
-      width,
-      height,
-      edgingForVideoIndex: videoIndex,
-    });
+  // Add last row to list of blocks.
+  blocks.push(...previousRow);
 
-    blockX += tombola.rangeFloat(
-      width - constants.VIDEO_BLOCK_MAX_BLOCK_OVERLAP,
-      width
-    );
-  }
-
-  // Place bottom side edging blocks.
-  blockX =
-    video.x - tombola.rangeFloat(0, constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER);
-  while (blockX < video.x + constants.VIDEO_WIDTH) {
-    const overhangInner = tombola.rangeFloat(
-      0,
-      constants.VIDEO_BLOCK_MAX_OVERHANG_INNER
-    );
-    const overhangOuter = tombola.rangeFloat(
-      0,
-      // Make sure combined overhangs aren't greater than max block size.
-      Math.min(
-        constants.VIDEO_BLOCK_MAX_OVERHANG_OUTER,
-        constants.BLOCK_MAX_SIZE - overhangInner
-      )
-    );
-    const y = video.y + constants.VIDEO_HEIGHT - overhangInner;
-    const height = overhangInner + overhangOuter;
-    const width = tombola.rangeFloat(
-      height * constants.BLOCK_MIN_ASPECT,
-      height * constants.BLOCK_MAX_ASPECT
-    );
-    videoBlocks.push({
-      x: blockX,
-      y,
-      width,
-      height,
-      edgingForVideoIndex: videoIndex,
-    });
-
-    blockX += tombola.rangeFloat(
-      width - constants.VIDEO_BLOCK_MAX_BLOCK_OVERLAP,
-      width
-    );
-  }
-
-  return shuffleArray(videoBlocks);
+  return blocks;
 };
 
 const randomizeBlocks = (screenWidth: number, screenHeight: number): void => {
-  params.blocks = [];
-
-  const blocks = [];
-  params.videos.forEach((video, index) => {
-    blocks.push(...shuffleArray(getEdgingBlocksForVideo(video, index)));
-  });
-  params.blocks.push(...shuffleArray(blocks));
+  const backgroundBlocks = getBlockBounds(screenWidth, screenHeight);
+  const backgroundBlocksWithColors = backgroundBlocks.map((block) => ({
+    ...block,
+    color: {
+      r: constants.BLOCK_BASE_COLOR.r + tombola.fudge(20, 0.1),
+      g: constants.BLOCK_BASE_COLOR.g + tombola.fudge(20, 0.1),
+      b: constants.BLOCK_BASE_COLOR.b + tombola.fudge(20, 0.1),
+    },
+  }));
+  params.blocks = shuffleArray(backgroundBlocksWithColors);
 };
 
 /**
  * Update the current params. Should be called every frame.
  */
-export const updateParams = () => {};
+export const updateParams = () => {
+  params.blocks.forEach((block, index) => {
+    const oldColor = block.color;
+    for (const [key, value] of Object.entries(block.color)) {
+      const newColor = value + tombola.fudgeFloat(1, 0.05);
+      block.color[key] = clamp(
+        newColor,
+        constants.BLOCK_BASE_COLOR[key] - 2,
+        constants.BLOCK_BASE_COLOR[key] + 2
+      );
+    }
+  });
+};
 
 export default params;

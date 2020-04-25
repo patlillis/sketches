@@ -11,6 +11,12 @@ module.exports = {
       },
     ],
   },
+  devtool: "inline-source-map",
+  devServer: {
+    publicPath: "/03/dist/",
+    contentBasePublicPath: "/03/",
+    openPage: "03",
+  },
   resolve: {
     extensions: [".tsx", ".ts", ".js"],
   },

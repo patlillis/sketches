@@ -6,8 +6,9 @@
   "author": "Pat Lillis",
   "license": "ISC",
   "scripts": {
-    "dev": "webpack --mode=development --watch",
-    "build": "webpack --mode=production",
+    "dev": "webpack-dev-server",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && webpack --mode=production",
     "serve": "serve .."
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "tslib": "^1.11.1",
     "typescript": "^3.8.3",
     "webpack": "^4.42.1",
-    "webpack-cli": "^3.3.11"
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.10.3"
   }
 }
