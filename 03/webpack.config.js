@@ -16,6 +16,8 @@ module.exports = {
     publicPath: "/03/dist/",
     contentBasePublicPath: "/03/",
     openPage: "03",
+    open: true,
+    liveReload: false,
   },
   resolve: {
     extensions: [".tsx", ".ts", ".js"],

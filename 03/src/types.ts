@@ -29,4 +29,17 @@ export const enclosedIn = (a: Block, b: Block): boolean => {
   return true;
 };
 
+export type Video = { bounds: Block };
+
 export type Color = { r: number; g: number; b: number; a?: number };
+
+export type Beat = { bars: number; beats: number; sixteenths: number };
+
+export const toBeat = (barsBeatsSixteenths: string): Beat => {
+  const splits = barsBeatsSixteenths.split(":");
+  return {
+    bars: parseFloat(splits[0]),
+    beats: parseFloat(splits[1]),
+    sixteenths: parseFloat(splits[2]),
+  };
+};

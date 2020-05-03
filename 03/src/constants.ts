@@ -1,8 +1,9 @@
+// Video constants.
 export const VIDEO_HEIGHT = 240;
 export const VIDEO_WIDTH = 427;
-
 export const VIDEO_PADDING = 30;
 
+// Block constants.
 export const VIDEO_BLOCK_MAX_OVERHANG_OUTER = 100;
 export const VIDEO_BLOCK_MAX_OVERHANG_INNER = 100;
 export const VIDEO_BLOCK_MAX_BLOCK_OVERLAP = 30;
@@ -18,3 +19,6 @@ export const BLOCK_BASE_COLOR = {
   g: 0,
   b: 27,
 };
+
+// Audio constants.
+export const BPM = 95;

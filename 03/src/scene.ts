@@ -1,4 +1,4 @@
-import params, { randomizeParams, updateParams } from "./params";
+import params, { randomizeParams, updateParamsTick } from "./params";
 import * as constants from "./constants";
 import { enclosedIn } from "./types";
 import tombola from "./tombola";
@@ -7,7 +7,7 @@ export let videoElement: HTMLVideoElement;
 export let canvasElement: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
 
-export const initScene = (
+export const initScene = async (
   canvas: HTMLCanvasElement,
   video: HTMLVideoElement
 ) => {
@@ -42,7 +42,7 @@ const draw = () => {
     });
 
     // Draw blocks.
-    params.blocks.forEach((block, index) => {
+    params.blocks.forEach((block) => {
       const hide = params.videos.some((video) =>
         enclosedIn(block, video.bounds)
       );
@@ -54,13 +54,13 @@ const draw = () => {
   });
 
   // Update random params.
-  updateParams();
+  updateParamsTick();
 
   // RAF for next frame.
   requestAnimationFrame(draw);
 };
 
-export const startScene = () => {
+export const startScene = async () => {
   canvasElement.classList.remove("hidden");
   videoElement.play();
   draw();

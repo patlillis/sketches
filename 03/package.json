@@ -12,7 +12,8 @@
     "serve": "serve .."
   },
   "dependencies": {
-    "tombola": "0.0.2"
+    "tombola": "0.0.2",
+    "tone": "^14.6.4"
   },
   "devDependencies": {
     "serve": "^11.3.0",
