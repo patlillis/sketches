@@ -1,7 +1,8 @@
 import * as Tone from "tone";
 
 import * as constants from "./constants";
-import { Beat, toBeat } from "./types";
+import { Beat } from "./types";
+import { toBeat } from "./utils";
 import tombola from "./tombola";
 import params, { updateParamsBeat } from "./params";
 
@@ -48,6 +49,14 @@ export const startAudio = async () => {
   await Tone.start();
   await Tone.Transport.start();
 };
+
+export async function playAudio() {
+  Tone.Transport.start();
+}
+
+export async function pauseAudio() {
+  Tone.Transport.pause();
+}
 
 const mainLoop = (time: number) => {
   const beat: Beat = toBeat(Tone.Transport.position.toString());

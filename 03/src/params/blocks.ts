@@ -120,8 +120,8 @@ export const randomizeBlocks = (
   const backgroundBlocksWithColors = backgroundBlocks.map((block) => ({
     ...block,
     color: {
-      r: constants.BLOCK_BASE_COLOR.r, //+ tombola.fudge(100, 0.1),
-      g: constants.BLOCK_BASE_COLOR.g, // + tombola.fudge(100, 0.1),
+      r: constants.BLOCK_BASE_COLOR.r,
+      g: constants.BLOCK_BASE_COLOR.g,
       b: constants.BLOCK_BASE_COLOR.b + tombola.fudge(200, 0.1),
     },
   }));
@@ -136,7 +136,7 @@ export const updateBlocksTick = () => {
   const maxB = constants.BLOCK_BASE_COLOR.b + 20;
 
   params.blocks.forEach((block) => {
-    block.color.b += tombola.rangeFloat(0, 0.5) * block.colorChangeDirection;
+    block.color.b += tombola.rangeFloat(0, 0.75) * block.colorChangeDirection;
 
     if (
       (block.color.b <= minB && block.colorChangeDirection === -1) ||
