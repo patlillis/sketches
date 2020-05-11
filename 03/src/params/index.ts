@@ -1,10 +1,16 @@
-import { Block, Video, Color, Beat } from "../types";
+import { Block, Video, Color, Beat, Scene } from "../types";
 
 import { randomizeVideos, updateVideosTick, updateVideosBeat } from "./videos";
 import { randomizeBlocks, updateBlocksTick, updateBlocksBeat } from "./blocks";
 import { randomizeAudio, updateAudioBeat, updateAudioTick } from "./audio";
+import { initSceneParams } from "./scene";
 
 type Params = {
+  scene: {
+    current: Scene;
+    previous: Scene;
+    transition: number;
+  };
   videos: Array<Video>;
   blocks: Array<Block & { color: Color; colorChangeDirection: number }>;
   audio: {
@@ -17,7 +23,16 @@ type Params = {
 /**
  * Randomized parameters that control how the scene renders.
  */
-export default {} as Params;
+const params = {} as Params;
+export default params;
+
+/**
+ * Randomly initialize params.
+ */
+export const initParams = (screenWidth: number, screenHeight: number) => {
+  initSceneParams();
+  randomizeParams(screenWidth, screenHeight);
+};
 
 /**
  * Re-randomize the params.

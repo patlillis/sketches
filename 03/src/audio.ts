@@ -82,7 +82,6 @@ export async function pauseAudio() {
 const mainLoop = () => {
   const time = Tone.Transport.seconds;
   const beat: Beat = toBeat(Tone.Transport.position.toString());
-  console.log(beat, time);
 
   // Update audio params for this beat.
   updateParamsBeat(beat, time);
