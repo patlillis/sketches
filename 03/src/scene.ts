@@ -80,52 +80,80 @@ const draw = (time) => {
     });
   });
 
-  // Draw play/pause.
+  // Draw play/pause UI.
   wrapDraw(() => {
     ctx.fillStyle = "white";
 
     if (isPlaying) {
+      // Pause button.
       ctx.fillRect(
-        constants.PLAY_PAUSE_PADDING,
-        canvasElement.height -
-          constants.PLAY_PAUSE_PADDING -
-          constants.PLAY_PAUSE_SIZE,
-        (constants.PLAY_PAUSE_SIZE * 3) / 7,
-        constants.PLAY_PAUSE_SIZE
+        constants.UI_PADDING,
+        canvasElement.height - constants.UI_PADDING - constants.UI_SIZE,
+        (constants.UI_SIZE * 3) / 7,
+        constants.UI_SIZE
       );
       ctx.fillRect(
-        constants.PLAY_PAUSE_PADDING + (constants.PLAY_PAUSE_SIZE * 4) / 7,
-        canvasElement.height -
-          constants.PLAY_PAUSE_PADDING -
-          constants.PLAY_PAUSE_SIZE,
-        (constants.PLAY_PAUSE_SIZE * 3) / 7,
-        constants.PLAY_PAUSE_SIZE
+        constants.UI_PADDING + (constants.UI_SIZE * 4) / 7,
+        canvasElement.height - constants.UI_PADDING - constants.UI_SIZE,
+        (constants.UI_SIZE * 3) / 7,
+        constants.UI_SIZE
       );
     } else {
+      // Play button.
       ctx.beginPath();
       // Top corner.
       ctx.moveTo(
-        constants.PLAY_PAUSE_PADDING,
-        canvasElement.height -
-          constants.PLAY_PAUSE_PADDING -
-          constants.PLAY_PAUSE_SIZE
+        constants.UI_PADDING,
+        canvasElement.height - constants.UI_PADDING - constants.UI_SIZE
       );
       // Bottom corner.
       ctx.lineTo(
-        constants.PLAY_PAUSE_PADDING,
-        canvasElement.height - constants.PLAY_PAUSE_PADDING
+        constants.UI_PADDING,
+        canvasElement.height - constants.UI_PADDING
       );
       // Tip.
       ctx.lineTo(
-        constants.PLAY_PAUSE_PADDING + constants.PLAY_PAUSE_SIZE,
-        canvasElement.height -
-          constants.PLAY_PAUSE_PADDING -
-          constants.PLAY_PAUSE_SIZE / 2
+        constants.UI_PADDING + constants.UI_SIZE,
+        canvasElement.height - constants.UI_PADDING - constants.UI_SIZE / 2
       );
       ctx.closePath();
       ctx.fill();
     }
   });
+
+  // Draw "close scene" button.
+  if (
+    isPlaying &&
+    params.scene.current !== Scene.Main &&
+    params.scene.transition === 1
+  ) {
+    wrapDraw(() => {
+      ctx.fillStyle = "white";
+      ctx.translate(
+        canvasElement.width - constants.UI_PADDING - constants.UI_SIZE / 2,
+        canvasElement.height - constants.UI_PADDING - constants.UI_SIZE / 2
+      );
+      ctx.rotate(Math.PI / 4);
+
+      const diagonalRadius = (constants.UI_SIZE / 2) * Math.SQRT2;
+      const crossBarLength = (constants.UI_SIZE * 2) / 7;
+      const diagonalLeftOut = crossBarLength / 2;
+      const diagonalIncluded = diagonalRadius - diagonalLeftOut;
+
+      ctx.fillRect(
+        -diagonalIncluded,
+        -crossBarLength / 2,
+        diagonalIncluded * 2,
+        crossBarLength
+      );
+      ctx.fillRect(
+        -crossBarLength / 2,
+        -diagonalIncluded,
+        crossBarLength,
+        diagonalIncluded * 2
+      );
+    });
+  }
 
   // Update random params.
   if (isPlaying) {
@@ -156,17 +184,30 @@ const onClick = (event: MouseEvent) => {
 
   // Check if clicked on play/pause.
   const playPauseBlock: Block = {
-    x: constants.PLAY_PAUSE_PADDING,
-    y:
-      canvasElement.height -
-      constants.PLAY_PAUSE_PADDING -
-      constants.PLAY_PAUSE_SIZE,
-    width: constants.PLAY_PAUSE_SIZE,
-    height: constants.PLAY_PAUSE_SIZE,
+    x: constants.UI_PADDING,
+    y: canvasElement.height - constants.UI_PADDING - constants.UI_SIZE,
+    width: constants.UI_SIZE,
+    height: constants.UI_SIZE,
   };
-
   if (enclosedIn(mousePosition, playPauseBlock)) {
     setIsPlaying(!isPlaying);
+    return;
+  }
+
+  // Check if clicked on close scene button.
+  const closeSceneBlock: Block = {
+    x: canvasElement.width - constants.UI_PADDING - constants.UI_SIZE,
+    y: canvasElement.height - constants.UI_PADDING - constants.UI_SIZE,
+    width: constants.UI_SIZE,
+    height: constants.UI_SIZE,
+  };
+  if (
+    isPlaying &&
+    params.scene.current !== Scene.Main &&
+    params.scene.transition === 1 &&
+    enclosedIn(mousePosition, closeSceneBlock)
+  ) {
+    setScene(Scene.Main);
     return;
   }
 
@@ -175,7 +216,6 @@ const onClick = (event: MouseEvent) => {
     for (const [index, video] of params.videos.entries()) {
       if (enclosedIn(mousePosition, video.bounds)) {
         const scene = getSceneForVideo(video);
-        console.log(`Transitioning to scene ${scene}`);
         setScene(scene);
         return;
       }
@@ -216,8 +256,8 @@ function setScene(scene: Scene) {
   };
 
   const tween = new TWEEN.Tween(params.scene)
-    .to({ transition: 1 }, 1000)
-    .easing(TWEEN.Easing.Quadratic.Out)
+    .to({ transition: 1 }, 1500)
+    .easing(TWEEN.Easing.Quadratic.InOut)
     // Update background transform to "zoom in" on the selected video.
     .onUpdate(updateBackgroundTransform)
     .onComplete(() => allTweens.remove(tween));

@@ -23,6 +23,6 @@ export const BLOCK_BASE_COLOR = {
 // Audio constants.
 export const BPM = 95;
 
-// Play/pause constants.
-export const PLAY_PAUSE_PADDING = 30;
-export const PLAY_PAUSE_SIZE = 50;
+// UI constants.
+export const UI_PADDING = 30;
+export const UI_SIZE = 50;
