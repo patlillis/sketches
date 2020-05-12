@@ -7,7 +7,7 @@ export type Block = {
   height: number;
 };
 
-export type Video = { bounds: Block };
+export type Video = { bounds: Block; intersectingBlocks: number[] };
 
 export type Color = { r: number; g: number; b: number; a?: number };
 

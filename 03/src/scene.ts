@@ -8,19 +8,26 @@ import {
   getVideoForScene,
   calculateTransformForVideo,
   lerp,
+  getVideoIndexForScene,
 } from "./utils";
 import tombola from "./tombola";
-import { Block, Point, Scene } from "./types";
+import { Block, Point, Scene, Video } from "./types";
 import { playAudio, pauseAudio } from "./audio";
 
 export let videoElement: HTMLVideoElement;
 export let canvasElement: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
 
-export let isPlaying = false;
+/*********** Random variables to track state. *******************/
 
-// This is the transform for "zooming in" on a video. Affects videos and blocks.
+/** Whether the video is paused or not. */
+let isPlaying = false;
+/** The transform for "zooming in" on a video. Affects videos and blocks. */
 let backgroundTransform = { x: 0, y: 0, scale: 1.0 };
+/** Index of video being hovered over. -1 if no video is being hovered. */
+let isHoveringVideoIndex = -1;
+let isHoveringPlayPause = false;
+let isHoveringCloseScene = false;
 
 const allTweens = new TWEEN.Group();
 
@@ -32,7 +39,8 @@ export const initScene = async (
   ctx = canvasElement.getContext("2d");
   videoElement = video;
 
-  canvasElement.addEventListener("mousedown", onClick, { capture: false });
+  canvasElement.addEventListener("mousedown", onMouseClick, { capture: false });
+  canvasElement.addEventListener("mousemove", onMouseMove, { capture: false });
 
   canvasElement.width = window.innerWidth;
   canvasElement.height = window.innerHeight;
@@ -70,20 +78,29 @@ const draw = (time) => {
 
     // Draw blocks.
     params.blocks.forEach((block) => {
-      const hide = params.videos.some((video) =>
-        enclosedIn(block, video.bounds)
-      );
-      if (!hide) {
-        ctx.fillStyle = `rgb(${block.color.r}, ${block.color.g}, ${block.color.b})`;
-        ctx.fillRect(block.x, block.y, block.width, block.height);
-      }
+      if (block.intersectingVideos.includes(isHoveringVideoIndex)) return;
+      if (
+        block.intersectingVideos.includes(
+          getVideoIndexForScene(params.scene.current)
+        )
+      )
+        return;
+      if (
+        block.intersectingVideos.includes(
+          getVideoIndexForScene(params.scene.previous)
+        ) &&
+        params.scene.transition !== 1
+      )
+        return;
+      ctx.fillStyle = block.intersectingVideos.includes(isHoveringVideoIndex)
+        ? "#F5B940"
+        : `rgb(${block.color.r}, ${block.color.g}, ${block.color.b})`;
+      ctx.fillRect(block.x, block.y, block.width, block.height);
     });
   });
 
   // Draw play/pause UI.
-  wrapDraw(() => {
-    ctx.fillStyle = "white";
-
+  const drawPlayPause = () => {
     if (isPlaying) {
       // Pause button.
       ctx.fillRect(
@@ -119,6 +136,16 @@ const draw = (time) => {
       ctx.closePath();
       ctx.fill();
     }
+  };
+  wrapDraw(() => {
+    ctx.fillStyle = "black";
+    ctx.translate(-2, -2);
+    drawPlayPause();
+  });
+
+  wrapDraw(() => {
+    ctx.fillStyle = isHoveringPlayPause ? "#F5B940" : "white";
+    drawPlayPause();
   });
 
   // Draw "close scene" button.
@@ -127,8 +154,7 @@ const draw = (time) => {
     params.scene.current !== Scene.Main &&
     params.scene.transition === 1
   ) {
-    wrapDraw(() => {
-      ctx.fillStyle = "white";
+    const drawCloseScene = () => {
       ctx.translate(
         canvasElement.width - constants.UI_PADDING - constants.UI_SIZE / 2,
         canvasElement.height - constants.UI_PADDING - constants.UI_SIZE / 2
@@ -152,6 +178,16 @@ const draw = (time) => {
         crossBarLength,
         diagonalIncluded * 2
       );
+    };
+    wrapDraw(() => {
+      ctx.fillStyle = "black";
+      ctx.translate(-2, -2);
+      drawCloseScene();
+    });
+
+    wrapDraw(() => {
+      ctx.fillStyle = isHoveringCloseScene ? "#F5B940" : "white";
+      drawCloseScene();
     });
   }
 
@@ -179,46 +215,79 @@ export const resizeScene = () => {
   canvasElement.height = window.innerHeight;
 };
 
-const onClick = (event: MouseEvent) => {
-  const mousePosition: Point = { x: event.pageX, y: event.pageY };
-
-  // Check if clicked on play/pause.
+const testPlayPauseCollision = (mousePosition: Point) => {
   const playPauseBlock: Block = {
     x: constants.UI_PADDING,
     y: canvasElement.height - constants.UI_PADDING - constants.UI_SIZE,
     width: constants.UI_SIZE,
     height: constants.UI_SIZE,
   };
-  if (enclosedIn(mousePosition, playPauseBlock)) {
-    setIsPlaying(!isPlaying);
-    return;
-  }
+  return enclosedIn(mousePosition, playPauseBlock);
+};
 
-  // Check if clicked on close scene button.
+const testCloseSceneCollision = (mousePosition: Point) => {
   const closeSceneBlock: Block = {
     x: canvasElement.width - constants.UI_PADDING - constants.UI_SIZE,
     y: canvasElement.height - constants.UI_PADDING - constants.UI_SIZE,
     width: constants.UI_SIZE,
     height: constants.UI_SIZE,
   };
-  if (
+  return (
     isPlaying &&
     params.scene.current !== Scene.Main &&
     params.scene.transition === 1 &&
     enclosedIn(mousePosition, closeSceneBlock)
-  ) {
+  );
+};
+
+const testVideoCollision = (mousePosition: Point, video: Video) => {
+  return (
+    isPlaying &&
+    params.scene.current === Scene.Main &&
+    params.scene.transition === 1 &&
+    enclosedIn(mousePosition, video.bounds)
+  );
+};
+
+const onMouseClick = (event: MouseEvent) => {
+  const mousePosition: Point = { x: event.pageX, y: event.pageY };
+
+  // Check if clicked on play/pause.
+  if (testPlayPauseCollision(mousePosition)) {
+    setIsPlaying(!isPlaying);
+    return;
+  }
+
+  // Check if clicked on close scene button.
+  if (testCloseSceneCollision(mousePosition)) {
     setScene(Scene.Main);
     return;
   }
 
   // Check if clicked on videos.
-  if (isPlaying && params.scene.current === Scene.Main) {
-    for (const [index, video] of params.videos.entries()) {
-      if (enclosedIn(mousePosition, video.bounds)) {
-        const scene = getSceneForVideo(video);
-        setScene(scene);
-        return;
-      }
+  for (const video of params.videos) {
+    if (testVideoCollision(mousePosition, video)) {
+      const scene = getSceneForVideo(video);
+      setScene(scene);
+      return;
+    }
+  }
+};
+
+const onMouseMove = (event: MouseEvent) => {
+  const mousePosition: Point = { x: event.pageX, y: event.pageY };
+
+  // Check if play/pause is hovered.
+  isHoveringPlayPause = testPlayPauseCollision(mousePosition);
+
+  // Check if close scene button is hovered.
+  isHoveringCloseScene = testCloseSceneCollision(mousePosition);
+
+  // Check if videos are hovered.
+  isHoveringVideoIndex = -1;
+  for (const [index, video] of params.videos.entries()) {
+    if (testVideoCollision(mousePosition, video)) {
+      isHoveringVideoIndex = index;
     }
   }
 };

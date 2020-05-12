@@ -12,7 +12,13 @@ type Params = {
     transition: number;
   };
   videos: Array<Video>;
-  blocks: Array<Block & { color: Color; colorChangeDirection: number }>;
+  blocks: Array<
+    Block & {
+      color: Color;
+      colorChangeDirection: number;
+      intersectingVideos: number[];
+    }
+  >;
   audio: {
     piano: {
       note: string;

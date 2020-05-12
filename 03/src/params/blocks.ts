@@ -1,7 +1,7 @@
 import { Block, Beat } from "../types";
 import tombola from "../tombola";
 import * as constants from "../constants";
-import { shuffleArray } from "../utils";
+import { shuffleArray, enclosedIn, intersects } from "../utils";
 
 import params from "./index";
 
@@ -116,19 +116,38 @@ export const randomizeBlocks = (
   screenWidth: number,
   screenHeight: number
 ): void => {
-  const backgroundBlocks = getBlockBounds(screenWidth, screenHeight);
-  const backgroundBlocksWithColors = backgroundBlocks.map((block) => ({
-    ...block,
-    color: {
-      r: constants.BLOCK_BASE_COLOR.r,
-      g: constants.BLOCK_BASE_COLOR.g,
-      b: constants.BLOCK_BASE_COLOR.b + tombola.fudge(200, 0.1),
-    },
-  }));
-  params.blocks = shuffleArray(backgroundBlocksWithColors).map((b) => ({
-    ...b,
-    colorChangeDirection: tombola.percent(50) ? 1 : -1,
-  }));
+  const backgroundBlocks = getBlockBounds(screenWidth, screenHeight)
+    // Don't include blocks that are completely inside one of the videos.
+    .filter((block) =>
+      params.videos.every((video) => !enclosedIn(block, video.bounds))
+    )
+    // Add some properties for fancy color stuff.
+    .map((block) => ({
+      ...block,
+      color: {
+        r: constants.BLOCK_BASE_COLOR.r,
+        g: constants.BLOCK_BASE_COLOR.g,
+        b: constants.BLOCK_BASE_COLOR.b + tombola.fudge(200, 0.1),
+      },
+      colorChangeDirection: tombola.item([-1, 1]),
+      intersectingVideos: params.videos
+        .map((video, originalIndex) => ({ video, originalIndex }))
+        .filter(({ video }) => {
+          return intersects(video.bounds, block);
+        })
+        .map(({ originalIndex }) => originalIndex),
+    }));
+
+  const shuffledBlocks = shuffleArray(backgroundBlocks);
+
+  // Track which blocks intersect with videos.
+  shuffledBlocks.forEach((block, index) => {
+    for (const videoIndex of block.intersectingVideos) {
+      params.videos[videoIndex].intersectingBlocks.push(index);
+    }
+  });
+
+  params.blocks = shuffledBlocks;
 };
 
 export const updateBlocksTick = () => {

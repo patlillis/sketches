@@ -74,18 +74,27 @@ export function enclosedIn(a: any, b: Block): boolean {
 /**
  * Get the video corresponding to the given scene.
  *
- * Returns `null` if the given scene has no corresponding video.
+ * Returns `undefined` if the given scene has no corresponding video.
  */
 export function getVideoForScene(scene: Scene) {
+  return params.videos[getVideoIndexForScene(scene)];
+}
+
+/**
+ * Get the video index corresponding to the given scene.
+ *
+ * Returns `-1` if the given scene has no corresponding video.
+ */
+export function getVideoIndexForScene(scene: Scene) {
   switch (scene) {
     case Scene.Video0:
-      return params.videos[0];
+      return 0;
     case Scene.Video1:
-      return params.videos[1];
+      return 1;
     case Scene.Video2:
-      return params.videos[2];
+      return 2;
     default:
-      return null;
+      return -1;
   }
 }
 

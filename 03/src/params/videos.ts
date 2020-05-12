@@ -45,21 +45,21 @@ export const randomizeVideos = (
       leftHalf: singleVideoOnLeft,
       topHalf: tombola.percent(50),
     });
-    params.videos.push({ bounds: v1Coords });
+    params.videos.push({ bounds: v1Coords, intersectingBlocks: [] });
 
     // Place second video.
     const v2Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: true,
       leftHalf: !singleVideoOnLeft,
     });
-    params.videos.push({ bounds: v2Coords });
+    params.videos.push({ bounds: v2Coords, intersectingBlocks: [] });
 
     // Place third video.
     const v3Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: false,
       leftHalf: !singleVideoOnLeft,
     });
-    params.videos.push({ bounds: v3Coords });
+    params.videos.push({ bounds: v3Coords, intersectingBlocks: [] });
   } else {
     // Two rows on top of each other.
     const singleVideoOnTop = tombola.percent(50);
@@ -69,21 +69,21 @@ export const randomizeVideos = (
       leftHalf: tombola.percent(50),
       topHalf: singleVideoOnTop,
     });
-    params.videos.push({ bounds: v1Coords });
+    params.videos.push({ bounds: v1Coords, intersectingBlocks: [] });
 
     // Place second video.
     const v2Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: !singleVideoOnTop,
       leftHalf: true,
     });
-    params.videos.push({ bounds: v2Coords });
+    params.videos.push({ bounds: v2Coords, intersectingBlocks: [] });
 
     // Place third video.
     const v3Coords = getVideoCoordsInQuardrant(screenWidth, screenHeight, {
       topHalf: !singleVideoOnTop,
       leftHalf: false,
     });
-    params.videos.push({ bounds: v3Coords });
+    params.videos.push({ bounds: v3Coords, intersectingBlocks: [] });
   }
 };
 
