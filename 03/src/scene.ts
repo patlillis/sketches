@@ -1,4 +1,4 @@
-import TWEEN from "@tweenjs/tween.js";
+import { Tween, Ease, Ticker } from "@createjs/tweenjs";
 
 import params, { updateParamsTick, initParams } from "./params";
 import * as constants from "./constants";
@@ -18,6 +18,47 @@ export let videoElement: HTMLVideoElement;
 export let canvasElement: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
 
+/*
+import { Tween } from "@createjs/tweenjs";
+
+const target = { transition: 0 };
+
+let reversed = false;
+
+const start = Date.now();
+
+// return;
+let tween;
+let newTween;
+tween = new Tween(target);
+
+tween.to({ transition: 1 }, 1000);
+tween.on("change", () => {
+  onChange();
+  if (target.transition > 0.5 && !reversed) {
+    console.log("WOO");
+    target.transition = 1;
+    newTween = new Tween(target, {
+      override: true
+    });
+    newTween.to({ transition: 0 }, 1000);
+    newTween.setPosition(tween.position);
+    newTween.on("change", onChange);
+  }
+});
+
+function onChange() {
+  const now = Date.now();
+  const elapsed = now - start;
+  console.log(
+    `${target.transition} [${elapsed}], [${tween.position}] [${newTween &&
+      newTween.positon}]`
+  );
+}
+
+
+*/
+
 /*********** Random variables to track state. *******************/
 
 /** Whether the video is paused or not. */
@@ -29,7 +70,7 @@ let isHoveringVideoIndex = -1;
 let isHoveringPlayPause = false;
 let isHoveringCloseScene = false;
 
-const allTweens = new TWEEN.Group();
+const allTweens = new Set<Tween>();
 
 export const initScene = async (
   canvas: HTMLCanvasElement,
@@ -48,6 +89,8 @@ export const initScene = async (
   initParams(canvasElement.width, canvasElement.height);
 
   updateBackgroundTransform();
+
+  Ticker.timingMode = Ticker.RAF;
 };
 
 const wrapDraw = (drawFunc: () => void) => {
@@ -196,9 +239,6 @@ const draw = (time) => {
     updateParamsTick();
   }
 
-  // Update tweening.
-  TWEEN.update(time);
-
   // RAF for next frame.
   requestAnimationFrame(draw);
 };
@@ -288,6 +328,31 @@ const onMouseMove = (event: MouseEvent) => {
   for (const [index, video] of params.videos.entries()) {
     if (testVideoCollision(mousePosition, video)) {
       isHoveringVideoIndex = index;
+
+      // Add tween for extended hover effect.
+      //   if (hoveringVideoTweens[index] == null) {
+      //     hoveringVideoTweens[index] = { transition: 0, tween: null };
+      //   }
+      //   const hoverTween = new TWEEN.Tween(hoveringVideoTweens[index].transition)
+      //     .to({ transition: 1 }, 1500)
+      //     .easing(TWEEN.Easing.Quadratic.InOut);
+      //   // Update background transform to "zoom in" on the selected video.
+      //   // .onUpdate(updateBackgroundTransform)
+      //   // .onComplete(() => allTweens.remove(hoverTween));
+      //   allTweens.add(hoverTween);
+      //   hoveringVideoTweens[index];
+      //   hoverTween.start();
+      // } else {
+      //   // Video is not being hovered.
+      //   const tween = new TWEEN.Tween(params.scene)
+      //     .to({ transition: 1 }, 1500)
+      //     .easing(TWEEN.Easing.Quadratic.InOut);
+      //   // Update background transform to "zoom in" on the selected video.
+      //   // .onUpdate(updateBackgroundTransform)
+      //   // .onComplete(() => allTweens.remove(tween));
+
+      //   allTweens.add(tween);
+      //   tween.start();
     }
   }
 };
@@ -303,7 +368,7 @@ function setIsPlaying(playing: boolean) {
     videoElement.play();
 
     // Resume tweens.
-    allTweens.getAll().forEach((tween, i) => tween.resume());
+    for (const tween of allTweens) tween.paused = false;
   } else {
     // Pause audio.
     pauseAudio();
@@ -312,7 +377,7 @@ function setIsPlaying(playing: boolean) {
     videoElement.pause();
 
     // Pause tweens.
-    allTweens.getAll().forEach((tween, i) => tween.pause());
+    for (const tween of allTweens) tween.paused = true;
   }
 }
 
@@ -324,15 +389,14 @@ function setScene(scene: Scene) {
     transition: 0,
   };
 
-  const tween = new TWEEN.Tween(params.scene)
-    .to({ transition: 1 }, 1500)
-    .easing(TWEEN.Easing.Quadratic.InOut)
-    // Update background transform to "zoom in" on the selected video.
-    .onUpdate(updateBackgroundTransform)
-    .onComplete(() => allTweens.remove(tween));
-
+  const tween = new Tween(params.scene).to(
+    { transition: 1 },
+    1500,
+    Ease.quadInOut
+  );
+  tween.on("change", updateBackgroundTransform);
+  tween.on("complete", () => allTweens.delete(tween));
   allTweens.add(tween);
-  tween.start();
 }
 
 /**

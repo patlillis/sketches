@@ -12,15 +12,12 @@
     "serve": "serve .."
   },
   "dependencies": {
-    "@tweenjs/tween.js": "^18.5.0",
+    "@createjs/tweenjs": "^2.0.0-beta.4",
     "tombola": "0.0.2",
     "tone": "^14.6.4"
   },
   "devDependencies": {
-    "@types/tween.js": "^18.5.0",
-    "serve": "^11.3.0",
     "ts-loader": "^7.0.0",
-    "tslib": "^1.11.1",
     "typescript": "^3.8.3",
     "webpack": "^4.42.1",
     "webpack-cli": "^3.3.11",
