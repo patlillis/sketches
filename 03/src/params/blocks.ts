@@ -128,6 +128,7 @@ export const randomizeBlocks = (
         r: constants.BLOCK_BASE_COLOR.r,
         g: constants.BLOCK_BASE_COLOR.g,
         b: constants.BLOCK_BASE_COLOR.b + tombola.fudge(200, 0.1),
+        a: 1,
       },
       colorChangeDirection: tombola.item([-1, 1]),
       intersectingVideos: params.videos

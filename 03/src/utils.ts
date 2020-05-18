@@ -1,4 +1,4 @@
-import { Beat, Block, Point, Scene, Video } from "./types";
+import { Beat, Block, Point, Scene, Video, HSLA, RGBA } from "./types";
 import params from "./params";
 
 /**
@@ -200,4 +200,29 @@ export function lerp(start: any, end: any, t: number): any {
     default:
       throw new Error("Don't know how to interpolate this type of thing.");
   }
+}
+
+function hslaToString(color: HSLA): string {
+  return `hsla(${color.h} ${color.s}% ${color.l}% / ${color.a})`;
+}
+
+function rgbaToString(color: RGBA): string {
+  return `rgba(${color.r} ${color.g} ${color.b} / ${color.a})`;
+}
+
+export function colorToString(color: HSLA): string;
+export function colorToString(color: RGBA): string;
+
+export function colorToString(color: any): string {
+  if (typeof color !== "object") throw new Error("Colors must be objects.");
+
+  if (["h", "s", "l", "a"].every((c) => color.hasOwnProperty(c))) {
+    return hslaToString(color);
+  }
+
+  if (["r", "g", "b", "a"].every((c) => color.hasOwnProperty(c))) {
+    return rgbaToString(color);
+  }
+
+  throw new Error("This isn't a color..");
 }

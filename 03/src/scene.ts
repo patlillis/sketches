@@ -9,8 +9,8 @@ import {
   calculateTransformForVideo,
   lerp,
   getVideoIndexForScene,
+  colorToString,
 } from "./utils";
-import tombola from "./tombola";
 import { Block, Point, Scene, Video } from "./types";
 import { playAudio, pauseAudio } from "./audio";
 
@@ -18,59 +18,30 @@ export let videoElement: HTMLVideoElement;
 export let canvasElement: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
 
-/*
-import { Tween } from "@createjs/tweenjs";
-
-const target = { transition: 0 };
-
-let reversed = false;
-
-const start = Date.now();
-
-// return;
-let tween;
-let newTween;
-tween = new Tween(target);
-
-tween.to({ transition: 1 }, 1000);
-tween.on("change", () => {
-  onChange();
-  if (target.transition > 0.5 && !reversed) {
-    console.log("WOO");
-    target.transition = 1;
-    newTween = new Tween(target, {
-      override: true
-    });
-    newTween.to({ transition: 0 }, 1000);
-    newTween.setPosition(tween.position);
-    newTween.on("change", onChange);
-  }
-});
-
-function onChange() {
-  const now = Date.now();
-  const elapsed = now - start;
-  console.log(
-    `${target.transition} [${elapsed}], [${tween.position}] [${newTween &&
-      newTween.positon}]`
-  );
-}
-
-
-*/
-
 /*********** Random variables to track state. *******************/
 
 /** Whether the video is paused or not. */
 let isPlaying = false;
 /** The transform for "zooming in" on a video. Affects videos and blocks. */
 let backgroundTransform = { x: 0, y: 0, scale: 1.0 };
-/** Index of video being hovered over. -1 if no video is being hovered. */
-let isHoveringVideoIndex = -1;
-let isHoveringPlayPause = false;
-let isHoveringCloseScene = false;
+const hoverState = {
+  /** Index of video being hovered over. -1 if no video is being hovered. */
+  videos: -1,
+  playPauseButton: { current: false, transition: 1 },
+  closeSceneButton: { current: false, transition: 1 },
+};
+const hoverTweens = {
+  videos: [] as Tween[],
+  playPauseButton: null as Tween,
+  closeSceneButton: null as Tween,
+};
+let playPauseButtonColor = constants.UI_COLOR;
+let closeSceneButtonColor = constants.UI_COLOR;
 
-const allTweens = new Set<Tween>();
+// Tweens for adding/removing hover effects on videos.
+let videoHoveringTweens = [];
+
+const pausableTweens = new Set<Tween>();
 
 export const initScene = async (
   canvas: HTMLCanvasElement,
@@ -121,7 +92,7 @@ const draw = (time) => {
 
     // Draw blocks.
     params.blocks.forEach((block) => {
-      if (block.intersectingVideos.includes(isHoveringVideoIndex)) return;
+      if (block.intersectingVideos.includes(hoverState.videos)) return;
       if (
         block.intersectingVideos.includes(
           getVideoIndexForScene(params.scene.current)
@@ -135,9 +106,7 @@ const draw = (time) => {
         params.scene.transition !== 1
       )
         return;
-      ctx.fillStyle = block.intersectingVideos.includes(isHoveringVideoIndex)
-        ? "#F5B940"
-        : `rgb(${block.color.r}, ${block.color.g}, ${block.color.b})`;
+      ctx.fillStyle = colorToString(block.color);
       ctx.fillRect(block.x, block.y, block.width, block.height);
     });
   });
@@ -187,7 +156,7 @@ const draw = (time) => {
   });
 
   wrapDraw(() => {
-    ctx.fillStyle = isHoveringPlayPause ? "#F5B940" : "white";
+    ctx.fillStyle = colorToString(playPauseButtonColor);
     drawPlayPause();
   });
 
@@ -229,7 +198,7 @@ const draw = (time) => {
     });
 
     wrapDraw(() => {
-      ctx.fillStyle = isHoveringCloseScene ? "#F5B940" : "white";
+      ctx.fillStyle = colorToString(closeSceneButtonColor);
       drawCloseScene();
     });
   }
@@ -265,6 +234,42 @@ const testPlayPauseCollision = (mousePosition: Point) => {
   return enclosedIn(mousePosition, playPauseBlock);
 };
 
+const updatePlayPauseHover = (mousePosition: Point) => {
+  const wasHoveringPlayPause = hoverState.playPauseButton.current;
+  const isHoveringPlayPause = testPlayPauseCollision(mousePosition);
+  hoverState.playPauseButton.current = isHoveringPlayPause;
+
+  if (wasHoveringPlayPause !== isHoveringPlayPause) {
+    const transitionStart = isHoveringPlayPause ? 0 : 1;
+    const transitionEnd = isHoveringPlayPause ? 1 : 0;
+    let tweenPosition = 0;
+    if (hoverTweens.playPauseButton != null) {
+      tweenPosition =
+        constants.UI_HOVER_TRANSITION_TIME -
+        hoverTweens.playPauseButton.position;
+    }
+
+    hoverState.playPauseButton.transition = transitionStart;
+    const tween = new Tween(hoverState.playPauseButton, { override: true }).to(
+      { transition: transitionEnd },
+      constants.UI_HOVER_TRANSITION_TIME,
+      Ease.linear
+    );
+    tween.setPosition(tweenPosition);
+    tween.on("change", () => {
+      playPauseButtonColor = lerp(
+        constants.UI_COLOR,
+        constants.UI_HOVER_COLOR,
+        hoverState.playPauseButton.transition
+      );
+    });
+    tween.on("complete", () => {
+      hoverTweens.playPauseButton = null;
+    });
+    hoverTweens.playPauseButton = tween;
+  }
+};
+
 const testCloseSceneCollision = (mousePosition: Point) => {
   const closeSceneBlock: Block = {
     x: canvasElement.width - constants.UI_PADDING - constants.UI_SIZE,
@@ -280,6 +285,42 @@ const testCloseSceneCollision = (mousePosition: Point) => {
   );
 };
 
+const updateCloseSceneHover = (mousePosition: Point) => {
+  const wasHoveringCloseScene = hoverState.closeSceneButton.current;
+  const isHoveringCloseScene = testCloseSceneCollision(mousePosition);
+  hoverState.closeSceneButton.current = isHoveringCloseScene;
+
+  if (wasHoveringCloseScene !== isHoveringCloseScene) {
+    const transitionStart = isHoveringCloseScene ? 0 : 1;
+    const transitionEnd = isHoveringCloseScene ? 1 : 0;
+    let tweenPosition = 0;
+    if (hoverTweens.closeSceneButton != null) {
+      tweenPosition =
+        constants.UI_HOVER_TRANSITION_TIME -
+        hoverTweens.closeSceneButton.position;
+    }
+
+    hoverState.closeSceneButton.transition = transitionStart;
+    const tween = new Tween(hoverState.closeSceneButton, { override: true }).to(
+      { transition: transitionEnd },
+      constants.UI_HOVER_TRANSITION_TIME,
+      Ease.linear
+    );
+    tween.setPosition(tweenPosition);
+    tween.on("change", () => {
+      closeSceneButtonColor = lerp(
+        constants.UI_COLOR,
+        constants.UI_HOVER_COLOR,
+        hoverState.closeSceneButton.transition
+      );
+    });
+    tween.on("complete", () => {
+      hoverTweens.closeSceneButton = null;
+    });
+    hoverTweens.closeSceneButton = tween;
+  }
+};
+
 const testVideoCollision = (mousePosition: Point, video: Video) => {
   return (
     isPlaying &&
@@ -287,6 +328,29 @@ const testVideoCollision = (mousePosition: Point, video: Video) => {
     params.scene.transition === 1 &&
     enclosedIn(mousePosition, video.bounds)
   );
+};
+
+const updateVideoHover = (mousePosition: Point) => {
+  let newVideoHoverIndex = -1;
+  for (const [index, video] of params.videos.entries()) {
+    const wasHoveringVideo = hoverState.videos === index;
+    const isHoveringVideo = testVideoCollision(mousePosition, video);
+    const hoveringVideoChanged = wasHoveringVideo !== isHoveringVideo;
+
+    // Update hover tracking.
+    if (isHoveringVideo) newVideoHoverIndex = index;
+
+    // If video hover status hasn't changed, don't need to update any tweens or
+    // anything.
+    if (!hoveringVideoChanged) continue;
+
+    if (isHoveringVideo) {
+      newVideoHoverIndex = index;
+    }
+  }
+
+  // Update index with hover results.
+  hoverState.videos = newVideoHoverIndex;
 };
 
 const onMouseClick = (event: MouseEvent) => {
@@ -318,43 +382,13 @@ const onMouseMove = (event: MouseEvent) => {
   const mousePosition: Point = { x: event.pageX, y: event.pageY };
 
   // Check if play/pause is hovered.
-  isHoveringPlayPause = testPlayPauseCollision(mousePosition);
+  updatePlayPauseHover(mousePosition);
 
   // Check if close scene button is hovered.
-  isHoveringCloseScene = testCloseSceneCollision(mousePosition);
+  updateCloseSceneHover(mousePosition);
 
   // Check if videos are hovered.
-  isHoveringVideoIndex = -1;
-  for (const [index, video] of params.videos.entries()) {
-    if (testVideoCollision(mousePosition, video)) {
-      isHoveringVideoIndex = index;
-
-      // Add tween for extended hover effect.
-      //   if (hoveringVideoTweens[index] == null) {
-      //     hoveringVideoTweens[index] = { transition: 0, tween: null };
-      //   }
-      //   const hoverTween = new TWEEN.Tween(hoveringVideoTweens[index].transition)
-      //     .to({ transition: 1 }, 1500)
-      //     .easing(TWEEN.Easing.Quadratic.InOut);
-      //   // Update background transform to "zoom in" on the selected video.
-      //   // .onUpdate(updateBackgroundTransform)
-      //   // .onComplete(() => allTweens.remove(hoverTween));
-      //   allTweens.add(hoverTween);
-      //   hoveringVideoTweens[index];
-      //   hoverTween.start();
-      // } else {
-      //   // Video is not being hovered.
-      //   const tween = new TWEEN.Tween(params.scene)
-      //     .to({ transition: 1 }, 1500)
-      //     .easing(TWEEN.Easing.Quadratic.InOut);
-      //   // Update background transform to "zoom in" on the selected video.
-      //   // .onUpdate(updateBackgroundTransform)
-      //   // .onComplete(() => allTweens.remove(tween));
-
-      //   allTweens.add(tween);
-      //   tween.start();
-    }
-  }
+  updateVideoHover(mousePosition);
 };
 
 function setIsPlaying(playing: boolean) {
@@ -368,7 +402,7 @@ function setIsPlaying(playing: boolean) {
     videoElement.play();
 
     // Resume tweens.
-    for (const tween of allTweens) tween.paused = false;
+    for (const tween of pausableTweens) tween.paused = false;
   } else {
     // Pause audio.
     pauseAudio();
@@ -377,7 +411,7 @@ function setIsPlaying(playing: boolean) {
     videoElement.pause();
 
     // Pause tweens.
-    for (const tween of allTweens) tween.paused = true;
+    for (const tween of pausableTweens) tween.paused = true;
   }
 }
 
@@ -391,12 +425,12 @@ function setScene(scene: Scene) {
 
   const tween = new Tween(params.scene).to(
     { transition: 1 },
-    1500,
+    constants.SCENE_TRANSITION_TIME,
     Ease.quadInOut
   );
   tween.on("change", updateBackgroundTransform);
-  tween.on("complete", () => allTweens.delete(tween));
-  allTweens.add(tween);
+  tween.on("complete", () => pausableTweens.delete(tween));
+  pausableTweens.add(tween);
 }
 
 /**
