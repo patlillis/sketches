@@ -8,13 +8,8 @@ import {
   getVideoForScene,
   calculateTransformForVideo,
   lerp,
-  getVideoIndexForScene,
   colorToString,
-  getIntersection,
-  getSlope,
-  getDistance,
-  getLineBetween,
-  getPointAlongLine,
+  scale,
 } from "./utils";
 import { Block, Point, Scene, Video } from "./types";
 import { playAudio, pauseAudio } from "./audio";
@@ -31,9 +26,14 @@ let isPlaying = false;
 let backgroundTransform = { x: 0, y: 0, scale: 1.0 };
 const hoverState = {
   /** Index of video being hovered over. -1 if no video is being hovered. */
-  videos: -1,
-  playPauseButton: { current: false, transition: 1 },
-  closeSceneButton: { current: false, transition: 1 },
+  currentVideoIndex: -1,
+  videos: [
+    { current: false, transition: 0 },
+    { current: false, transition: 0 },
+    { current: false, transition: 0 },
+  ],
+  playPauseButton: { current: false, transition: 0 },
+  closeSceneButton: { current: false, transition: 0 },
 };
 const hoverTweens = {
   videos: [] as Tween[],
@@ -96,12 +96,17 @@ const draw = (time: number) => {
     });
 
     // Draw blocks.
+    // console.log(hoverState.videos.map((v) => v.transition));
     params.blocks.forEach((block, index) => {
-      const intersectsWithHoveringVideo =
-        block.intersectingVideos[hoverState.videos];
-      const offset = intersectsWithHoveringVideo?.intersects
-        ? intersectsWithHoveringVideo.offset
-        : { x: 0, y: 0 };
+      let offset = { x: 0, y: 0 };
+      for (const [index, video] of block.intersectingVideos.entries()) {
+        const offsetForVideo = scale(
+          video.offset,
+          hoverState.videos[index].transition
+        );
+        offset.x += offsetForVideo.x;
+        offset.y += offsetForVideo.y;
+      }
 
       ctx.fillStyle = colorToString(block.color);
       ctx.fillRect(
@@ -335,24 +340,37 @@ const testVideoCollision = (mousePosition: Point, video: Video) => {
 const updateVideoHover = (mousePosition: Point) => {
   let newVideoHoverIndex = -1;
   for (const [index, video] of params.videos.entries()) {
-    const wasHoveringVideo = hoverState.videos === index;
+    const wasHoveringVideo = hoverState.videos[index].current;
     const isHoveringVideo = testVideoCollision(mousePosition, video);
-    const hoveringVideoChanged = wasHoveringVideo !== isHoveringVideo;
+    hoverState.videos[index].current = isHoveringVideo;
 
-    // Update hover tracking.
-    if (isHoveringVideo) newVideoHoverIndex = index;
+    if (wasHoveringVideo !== isHoveringVideo) {
+      const transitionStart = isHoveringVideo ? 0 : 1;
+      const transitionEnd = isHoveringVideo ? 1 : 0;
+      const tweenEasing = isHoveringVideo ? Ease.quintOut : Ease.quintIn;
+      let tweenPosition = 0;
+      if (hoverTweens.videos[index] != null) {
+        tweenPosition =
+          constants.VIDEO_HOVER_TRANSITION_TIME -
+          hoverTweens.videos[index].position;
+      }
 
-    // If video hover status hasn't changed, don't need to update any tweens or
-    // anything.
-    if (!hoveringVideoChanged) continue;
-
-    if (isHoveringVideo) {
-      newVideoHoverIndex = index;
+      hoverState.videos[index].transition = transitionStart;
+      const tween = new Tween(hoverState.videos[index], { override: true }).to(
+        { transition: transitionEnd },
+        constants.VIDEO_HOVER_TRANSITION_TIME,
+        tweenEasing
+      );
+      tween.setPosition(tweenPosition);
+      tween.on("complete", () => {
+        hoverTweens.videos[index] = null;
+      });
+      hoverTweens.videos[index] = tween;
     }
   }
 
   // Update index with hover results.
-  hoverState.videos = newVideoHoverIndex;
+  hoverState.currentVideoIndex = newVideoHoverIndex;
 };
 
 const onMouseClick = (event: MouseEvent) => {

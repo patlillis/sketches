@@ -1,4 +1,14 @@
-import { Beat, Block, Point, Scene, Video, HSLA, RGBA, Line } from "./types";
+import {
+  Beat,
+  Block,
+  Point,
+  Scene,
+  Video,
+  HSLA,
+  RGBA,
+  Line,
+  Vector,
+} from "./types";
 import params from "./params";
 
 /**
@@ -93,6 +103,10 @@ export function getSlope(a: Point, b: Point): number {
 
 export function getDistance(a: Point, b: Point): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+}
+
+export function scale(v: Vector, s: number): Vector {
+  return { x: v.x * s, y: v.y * s };
 }
 
 /**

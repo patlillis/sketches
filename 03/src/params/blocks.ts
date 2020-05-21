@@ -206,7 +206,7 @@ export const randomizeBlocks = (
           intersects: intersectsWithVideo,
           offset: intersectsWithVideo
             ? getBlockOffsetForVideo(block, video.bounds)
-            : null,
+            : { x: 0, y: 0 },
         };
       }),
     }));
