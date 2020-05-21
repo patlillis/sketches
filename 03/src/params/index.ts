@@ -16,7 +16,7 @@ type Params = {
     Block & {
       color: RGBA;
       colorChangeDirection: number;
-      intersectingVideos: { intersects: boolean; offset: Vector }[];
+      intersectingVideos: { intersects: boolean; adjustment: Block }[];
     }
   >;
   audio: {

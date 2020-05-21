@@ -119,66 +119,44 @@ const getBlockBounds = (
   return blocks;
 };
 
-const getBlockOffsetForVideo = (block: Block, video: Block): Vector => {
-  const videoCenter: Point = {
-    x: video.x + video.width / 2,
-    y: video.y + video.height / 2,
-  };
-
-  const blockCenter: Point = {
-    x: block.x + block.width / 2,
-    y: block.y + block.height / 2,
-  };
-
-  // The slope is flipped because in canvas-land, +x +y is down and to the
-  // right.
-  // TODO: Handle line with 0 slope and infinity slope.
-  const line = getLineBetween(blockCenter, videoCenter);
-
-  // if (line.slope > 0) {
-  const bottomCenter = getPointAlongLine(line, {
-    y: video.y + video.height + block.height / 2,
-  });
-  const bottomCenterDistance = getDistance(blockCenter, bottomCenter);
-
-  const rightCenter = getPointAlongLine(line, {
-    x: video.x + video.width + block.width / 2,
-  });
-  const rightCenterDistance = getDistance(blockCenter, rightCenter);
-
-  const topCenter = getPointAlongLine(line, {
-    y: video.y - block.height / 2,
-  });
-  const topCenterDistance = getDistance(blockCenter, topCenter);
-
-  const leftCenter = getPointAlongLine(line, {
-    x: video.x - block.width / 2,
-  });
-  const leftCenterDistance = getDistance(blockCenter, leftCenter);
+const getBlockAdjustmentForVideo = (block: Block, video: Block): Block => {
+  const topDistance = block.y + block.height - video.y;
+  const rightDistance = video.x + video.width - block.x;
+  const leftDistance = block.x + block.width - video.x;
+  const bottomDistance = video.y + video.height - block.y;
 
   const minDistance = Math.min(
-    topCenterDistance,
-    rightCenterDistance,
-    leftCenterDistance,
-    bottomCenterDistance
+    topDistance,
+    rightDistance,
+    leftDistance,
+    bottomDistance
   );
-  let center: Point;
+  let adjustment: Block;
   switch (minDistance) {
-    case topCenterDistance:
-      center = topCenter;
+    case topDistance:
+      // Just need to adjust the height.
+      adjustment = { x: 0, y: 0, width: 0, height: -topDistance };
       break;
-    case rightCenterDistance:
-      center = rightCenter;
+    case rightDistance:
+      // Need to adjust width and x coordinate.
+      adjustment = { x: rightDistance, y: 0, width: -rightDistance, height: 0 };
       break;
-    case leftCenterDistance:
-      center = leftCenter;
+    case leftDistance:
+      // Just need to adjust the width.
+      adjustment = { x: 0, y: 0, width: -leftDistance, height: 0 };
       break;
-    case bottomCenterDistance:
-      center = bottomCenter;
+    case bottomDistance:
+      // Need to adjust height and y coordinate.
+      adjustment = {
+        x: 0,
+        y: bottomDistance,
+        width: 0,
+        height: -bottomDistance,
+      };
       break;
   }
 
-  return { x: center.x - blockCenter.x, y: center.y - blockCenter.y };
+  return adjustment;
 };
 
 export const randomizeBlocks = (
@@ -204,9 +182,9 @@ export const randomizeBlocks = (
         const intersectsWithVideo = intersects(block, video.bounds);
         return {
           intersects: intersectsWithVideo,
-          offset: intersectsWithVideo
-            ? getBlockOffsetForVideo(block, video.bounds)
-            : { x: 0, y: 0 },
+          adjustment: intersectsWithVideo
+            ? getBlockAdjustmentForVideo(block, video.bounds)
+            : { x: 0, y: 0, width: 0, height: 0 },
         };
       }),
     }));

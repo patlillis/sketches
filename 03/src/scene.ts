@@ -96,24 +96,23 @@ const draw = (time: number) => {
     });
 
     // Draw blocks.
-    // console.log(hoverState.videos.map((v) => v.transition));
     params.blocks.forEach((block, index) => {
-      let offset = { x: 0, y: 0 };
+      // Figure out the adjustment to hide the block for hovered video.
+      let adjustment: Block = { x: 0, y: 0, width: 0, height: 0 };
       for (const [index, video] of block.intersectingVideos.entries()) {
-        const offsetForVideo = scale(
-          video.offset,
-          hoverState.videos[index].transition
-        );
-        offset.x += offsetForVideo.x;
-        offset.y += offsetForVideo.y;
+        const { transition } = hoverState.videos[index];
+        adjustment.x += video.adjustment.x * transition;
+        adjustment.y += video.adjustment.y * transition;
+        adjustment.width += video.adjustment.width * transition;
+        adjustment.height += video.adjustment.height * transition;
       }
 
       ctx.fillStyle = colorToString(block.color);
       ctx.fillRect(
-        block.x + offset.x,
-        block.y + offset.y,
-        block.width,
-        block.height
+        block.x + adjustment.x,
+        block.y + adjustment.y,
+        block.width + adjustment.width,
+        block.height + adjustment.height
       );
     });
   });
@@ -364,8 +363,10 @@ const updateVideoHover = (mousePosition: Point) => {
       tween.setPosition(tweenPosition);
       tween.on("complete", () => {
         hoverTweens.videos[index] = null;
+        pausableTweens.delete(tween);
       });
       hoverTweens.videos[index] = tween;
+      pausableTweens.add(tween);
     }
   }
 
