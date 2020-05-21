@@ -10,6 +10,11 @@ import {
   lerp,
   getVideoIndexForScene,
   colorToString,
+  getIntersection,
+  getSlope,
+  getDistance,
+  getLineBetween,
+  getPointAlongLine,
 } from "./utils";
 import { Block, Point, Scene, Video } from "./types";
 import { playAudio, pauseAudio } from "./audio";
@@ -70,7 +75,7 @@ const wrapDraw = (drawFunc: () => void) => {
   ctx.restore();
 };
 
-const draw = (time) => {
+const draw = (time: number) => {
   // Clear.
   ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
@@ -91,23 +96,78 @@ const draw = (time) => {
     });
 
     // Draw blocks.
-    params.blocks.forEach((block) => {
-      if (block.intersectingVideos.includes(hoverState.videos)) return;
-      if (
-        block.intersectingVideos.includes(
-          getVideoIndexForScene(params.scene.current)
-        )
-      )
-        return;
-      if (
-        block.intersectingVideos.includes(
-          getVideoIndexForScene(params.scene.previous)
-        ) &&
-        params.scene.transition !== 1
-      )
-        return;
+    params.blocks.forEach((block, index) => {
+      let offset: Point = { x: 0, y: 0 };
+
+      if (block.intersectingVideos.includes(hoverState.videos)) {
+        const video = params.videos[hoverState.videos].bounds;
+        const videoCenter: Point = {
+          x: video.x + video.width / 2,
+          y: video.y + video.height / 2,
+        };
+
+        const blockCenter: Point = {
+          x: block.x + block.width / 2,
+          y: block.y + block.height / 2,
+        };
+
+        // The slope is flipped because in canvas-land, +x +y is down and to the
+        // right.
+        // TODO: Handle line with 0 slope and infinity slope.
+        const line = getLineBetween(blockCenter, videoCenter);
+
+        // if (line.slope > 0) {
+        const bottomCenter = getPointAlongLine(line, {
+          y: video.y + video.height + block.height / 2,
+        });
+        const bottomCenterDistance = getDistance(blockCenter, bottomCenter);
+
+        const rightCenter = getPointAlongLine(line, {
+          x: video.x + video.width + block.width / 2,
+        });
+        const rightCenterDistance = getDistance(blockCenter, rightCenter);
+
+        const topCenter = getPointAlongLine(line, {
+          y: video.y - block.height / 2,
+        });
+        const topCenterDistance = getDistance(blockCenter, topCenter);
+
+        const leftCenter = getPointAlongLine(line, {
+          x: video.x - block.width / 2,
+        });
+        const leftCenterDistance = getDistance(blockCenter, leftCenter);
+
+        const minDistance = Math.min(
+          topCenterDistance,
+          rightCenterDistance,
+          leftCenterDistance,
+          bottomCenterDistance
+        );
+        let center: Point;
+        switch (minDistance) {
+          case topCenterDistance:
+            center = topCenter;
+            break;
+          case rightCenterDistance:
+            center = rightCenter;
+            break;
+          case leftCenterDistance:
+            center = leftCenter;
+            break;
+          case bottomCenterDistance:
+            center = bottomCenter;
+            break;
+        }
+        offset = { x: center.x - blockCenter.x, y: center.y - blockCenter.y };
+      }
+
       ctx.fillStyle = colorToString(block.color);
-      ctx.fillRect(block.x, block.y, block.width, block.height);
+      ctx.fillRect(
+        block.x + offset.x,
+        block.y + offset.y,
+        block.width,
+        block.height
+      );
     });
   });
 

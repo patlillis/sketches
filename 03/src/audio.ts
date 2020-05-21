@@ -20,8 +20,7 @@ declare global {
 
 export const initAudio = async () => {
   // This is a little weird, but this basically makes it 6/8 time in our desired
-  // BPM.
-  // Tone.Transport.pause();
+  // BPM (it's actually 6/4 at twice our BPM).
   Tone.Transport.bpm.value = constants.BPM * 2;
   Tone.Transport.timeSignature = 6;
 

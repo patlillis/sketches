@@ -1,4 +1,4 @@
-import { Beat, Block, Point, Scene, Video, HSLA, RGBA } from "./types";
+import { Beat, Block, Point, Scene, Video, HSLA, RGBA, Line } from "./types";
 import params from "./params";
 
 /**
@@ -33,6 +33,66 @@ export function toBeat(barsBeatsSixteenths: string): Beat {
     beats: parseFloat(splits[1]),
     sixteenths: parseFloat(splits[2]),
   };
+}
+
+export function getIntersection(a: Block, b: Block): Block {
+  const aMin: Point = { x: a.x, y: a.y };
+  const aMax: Point = { x: a.x + a.width, y: a.y + a.height };
+  const bMin: Point = { x: b.x, y: b.y };
+  const bMax: Point = { x: b.x + b.width, y: b.y + b.height };
+
+  const maxOfMins: Point = {
+    x: Math.max(aMin.x, bMin.x),
+    y: Math.max(aMin.y, bMin.y),
+  };
+  const minOfMaxes: Point = {
+    x: Math.min(aMax.x, bMax.x),
+    y: Math.min(aMax.y, bMax.y),
+  };
+
+  const result: Block = {
+    x: maxOfMins.x,
+    y: maxOfMins.y,
+    width: minOfMaxes.x - maxOfMins.x,
+    height: minOfMaxes.y - maxOfMins.y,
+  };
+
+  if (result.width <= 0 || result.height <= 0) return null;
+  return result;
+}
+
+export function getLineBetween(a: Point, b: Point): Line {
+  if (a.x === b.x && a.y === b.y) {
+    throw new Error("Can't get line between two points that are the same.");
+  }
+
+  const slope = a.x === b.x ? Infinity : (a.y - b.y) / (a.x - b.x);
+  const intercept = a.y - slope * a.x;
+  return { slope, intercept };
+}
+
+export function getPointAlongLine(line: Line, { x }: { x: number });
+export function getPointAlongLine(line: Line, { y }: { y: number });
+
+export function getPointAlongLine(
+  line: Line,
+  coord: { x: number } | { y: number }
+): Point {
+  let { x, y } = coord as any;
+
+  if (x != null) y = line.slope * x + line.intercept;
+  if (y != null) x = (y - line.intercept) / line.slope;
+
+  return { x, y };
+}
+
+export function getSlope(a: Point, b: Point): number {
+  if (a.x === b.x) return Infinity;
+  return (a.y - b.y) / (a.x - b.x);
+}
+
+export function getDistance(a: Point, b: Point): number {
+  return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
 }
 
 /**

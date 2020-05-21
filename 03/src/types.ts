@@ -1,5 +1,7 @@
 export type Point = { x: number; y: number };
 
+export type Line = { slope: number; intercept: number };
+
 export type Block = {
   x: number;
   y: number;
