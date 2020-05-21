@@ -1,4 +1,4 @@
-import { Block, Video, Beat, Scene, RGBA } from "../types";
+import { Block, Video, Beat, Scene, RGBA, Vector } from "../types";
 
 import { randomizeVideos, updateVideosTick, updateVideosBeat } from "./videos";
 import { randomizeBlocks, updateBlocksTick, updateBlocksBeat } from "./blocks";
@@ -16,7 +16,7 @@ type Params = {
     Block & {
       color: RGBA;
       colorChangeDirection: number;
-      intersectingVideos: number[];
+      intersectingVideos: { intersects: boolean; offset: Vector }[];
     }
   >;
   audio: {

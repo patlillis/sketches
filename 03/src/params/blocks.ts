@@ -1,7 +1,14 @@
-import { Block, Beat } from "../types";
+import { Block, Beat, Vector, Point } from "../types";
 import tombola from "../tombola";
 import * as constants from "../constants";
-import { shuffleArray, enclosedIn, intersects } from "../utils";
+import {
+  shuffleArray,
+  enclosedIn,
+  intersects,
+  getLineBetween,
+  getPointAlongLine,
+  getDistance,
+} from "../utils";
 
 import params from "./index";
 
@@ -112,6 +119,68 @@ const getBlockBounds = (
   return blocks;
 };
 
+const getBlockOffsetForVideo = (block: Block, video: Block): Vector => {
+  const videoCenter: Point = {
+    x: video.x + video.width / 2,
+    y: video.y + video.height / 2,
+  };
+
+  const blockCenter: Point = {
+    x: block.x + block.width / 2,
+    y: block.y + block.height / 2,
+  };
+
+  // The slope is flipped because in canvas-land, +x +y is down and to the
+  // right.
+  // TODO: Handle line with 0 slope and infinity slope.
+  const line = getLineBetween(blockCenter, videoCenter);
+
+  // if (line.slope > 0) {
+  const bottomCenter = getPointAlongLine(line, {
+    y: video.y + video.height + block.height / 2,
+  });
+  const bottomCenterDistance = getDistance(blockCenter, bottomCenter);
+
+  const rightCenter = getPointAlongLine(line, {
+    x: video.x + video.width + block.width / 2,
+  });
+  const rightCenterDistance = getDistance(blockCenter, rightCenter);
+
+  const topCenter = getPointAlongLine(line, {
+    y: video.y - block.height / 2,
+  });
+  const topCenterDistance = getDistance(blockCenter, topCenter);
+
+  const leftCenter = getPointAlongLine(line, {
+    x: video.x - block.width / 2,
+  });
+  const leftCenterDistance = getDistance(blockCenter, leftCenter);
+
+  const minDistance = Math.min(
+    topCenterDistance,
+    rightCenterDistance,
+    leftCenterDistance,
+    bottomCenterDistance
+  );
+  let center: Point;
+  switch (minDistance) {
+    case topCenterDistance:
+      center = topCenter;
+      break;
+    case rightCenterDistance:
+      center = rightCenter;
+      break;
+    case leftCenterDistance:
+      center = leftCenter;
+      break;
+    case bottomCenterDistance:
+      center = bottomCenter;
+      break;
+  }
+
+  return { x: center.x - blockCenter.x, y: center.y - blockCenter.y };
+};
+
 export const randomizeBlocks = (
   screenWidth: number,
   screenHeight: number
@@ -131,20 +200,25 @@ export const randomizeBlocks = (
         a: 1,
       },
       colorChangeDirection: tombola.item([-1, 1]),
-      intersectingVideos: params.videos
-        .map((video, originalIndex) => ({ video, originalIndex }))
-        .filter(({ video }) => {
-          return intersects(video.bounds, block);
-        })
-        .map(({ originalIndex }) => originalIndex),
+      intersectingVideos: params.videos.map((video) => {
+        const intersectsWithVideo = intersects(block, video.bounds);
+        return {
+          intersects: intersectsWithVideo,
+          offset: intersectsWithVideo
+            ? getBlockOffsetForVideo(block, video.bounds)
+            : null,
+        };
+      }),
     }));
 
   const shuffledBlocks = shuffleArray(backgroundBlocks);
 
   // Track which blocks intersect with videos.
-  shuffledBlocks.forEach((block, index) => {
-    for (const videoIndex of block.intersectingVideos) {
-      params.videos[videoIndex].intersectingBlocks.push(index);
+  shuffledBlocks.forEach((block, blockIndex) => {
+    for (const [videoIndex, video] of block.intersectingVideos.entries()) {
+      if (video.intersects) {
+        params.videos[videoIndex].intersectingBlocks.push(blockIndex);
+      }
     }
   });
 

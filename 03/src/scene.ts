@@ -97,69 +97,11 @@ const draw = (time: number) => {
 
     // Draw blocks.
     params.blocks.forEach((block, index) => {
-      let offset: Point = { x: 0, y: 0 };
-
-      if (block.intersectingVideos.includes(hoverState.videos)) {
-        const video = params.videos[hoverState.videos].bounds;
-        const videoCenter: Point = {
-          x: video.x + video.width / 2,
-          y: video.y + video.height / 2,
-        };
-
-        const blockCenter: Point = {
-          x: block.x + block.width / 2,
-          y: block.y + block.height / 2,
-        };
-
-        // The slope is flipped because in canvas-land, +x +y is down and to the
-        // right.
-        // TODO: Handle line with 0 slope and infinity slope.
-        const line = getLineBetween(blockCenter, videoCenter);
-
-        // if (line.slope > 0) {
-        const bottomCenter = getPointAlongLine(line, {
-          y: video.y + video.height + block.height / 2,
-        });
-        const bottomCenterDistance = getDistance(blockCenter, bottomCenter);
-
-        const rightCenter = getPointAlongLine(line, {
-          x: video.x + video.width + block.width / 2,
-        });
-        const rightCenterDistance = getDistance(blockCenter, rightCenter);
-
-        const topCenter = getPointAlongLine(line, {
-          y: video.y - block.height / 2,
-        });
-        const topCenterDistance = getDistance(blockCenter, topCenter);
-
-        const leftCenter = getPointAlongLine(line, {
-          x: video.x - block.width / 2,
-        });
-        const leftCenterDistance = getDistance(blockCenter, leftCenter);
-
-        const minDistance = Math.min(
-          topCenterDistance,
-          rightCenterDistance,
-          leftCenterDistance,
-          bottomCenterDistance
-        );
-        let center: Point;
-        switch (minDistance) {
-          case topCenterDistance:
-            center = topCenter;
-            break;
-          case rightCenterDistance:
-            center = rightCenter;
-            break;
-          case leftCenterDistance:
-            center = leftCenter;
-            break;
-          case bottomCenterDistance:
-            center = bottomCenter;
-            break;
-        }
-        offset = { x: center.x - blockCenter.x, y: center.y - blockCenter.y };
-      }
+      const intersectsWithHoveringVideo =
+        block.intersectingVideos[hoverState.videos];
+      const offset = intersectsWithHoveringVideo?.intersects
+        ? intersectsWithHoveringVideo.offset
+        : { x: 0, y: 0 };
 
       ctx.fillStyle = colorToString(block.color);
       ctx.fillRect(
