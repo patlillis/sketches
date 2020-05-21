@@ -32,19 +32,12 @@ const hoverState = {
     { current: false, transition: 0 },
     { current: false, transition: 0 },
   ],
-  playPauseButton: { current: false, transition: 0 },
-  closeSceneButton: { current: false, transition: 0 },
+  playPauseButton: false,
+  closeSceneButton: false,
 };
 const hoverTweens = {
   videos: [] as Tween[],
-  playPauseButton: null as Tween,
-  closeSceneButton: null as Tween,
 };
-let playPauseButtonColor = constants.UI_COLOR;
-let closeSceneButtonColor = constants.UI_COLOR;
-
-// Tweens for adding/removing hover effects on videos.
-let videoHoveringTweens = [];
 
 const pausableTweens = new Set<Tween>();
 
@@ -162,7 +155,10 @@ const draw = (time: number) => {
   });
 
   wrapDraw(() => {
-    ctx.fillStyle = colorToString(playPauseButtonColor);
+    const color = hoverState.playPauseButton
+      ? constants.UI_HOVER_COLOR
+      : constants.UI_COLOR;
+    ctx.fillStyle = colorToString(color);
     drawPlayPause();
   });
 
@@ -204,7 +200,10 @@ const draw = (time: number) => {
     });
 
     wrapDraw(() => {
-      ctx.fillStyle = colorToString(closeSceneButtonColor);
+      const color = hoverState.closeSceneButton
+        ? constants.UI_HOVER_COLOR
+        : constants.UI_COLOR;
+      ctx.fillStyle = colorToString(color);
       drawCloseScene();
     });
   }
@@ -241,39 +240,7 @@ const testPlayPauseCollision = (mousePosition: Point) => {
 };
 
 const updatePlayPauseHover = (mousePosition: Point) => {
-  const wasHoveringPlayPause = hoverState.playPauseButton.current;
-  const isHoveringPlayPause = testPlayPauseCollision(mousePosition);
-  hoverState.playPauseButton.current = isHoveringPlayPause;
-
-  if (wasHoveringPlayPause !== isHoveringPlayPause) {
-    const transitionStart = isHoveringPlayPause ? 0 : 1;
-    const transitionEnd = isHoveringPlayPause ? 1 : 0;
-    let tweenPosition = 0;
-    if (hoverTweens.playPauseButton != null) {
-      tweenPosition =
-        constants.UI_HOVER_TRANSITION_TIME -
-        hoverTweens.playPauseButton.position;
-    }
-
-    hoverState.playPauseButton.transition = transitionStart;
-    const tween = new Tween(hoverState.playPauseButton, { override: true }).to(
-      { transition: transitionEnd },
-      constants.UI_HOVER_TRANSITION_TIME,
-      Ease.linear
-    );
-    tween.setPosition(tweenPosition);
-    tween.on("change", () => {
-      playPauseButtonColor = lerp(
-        constants.UI_COLOR,
-        constants.UI_HOVER_COLOR,
-        hoverState.playPauseButton.transition
-      );
-    });
-    tween.on("complete", () => {
-      hoverTweens.playPauseButton = null;
-    });
-    hoverTweens.playPauseButton = tween;
-  }
+  hoverState.playPauseButton = testPlayPauseCollision(mousePosition);
 };
 
 const testCloseSceneCollision = (mousePosition: Point) => {
@@ -292,39 +259,7 @@ const testCloseSceneCollision = (mousePosition: Point) => {
 };
 
 const updateCloseSceneHover = (mousePosition: Point) => {
-  const wasHoveringCloseScene = hoverState.closeSceneButton.current;
-  const isHoveringCloseScene = testCloseSceneCollision(mousePosition);
-  hoverState.closeSceneButton.current = isHoveringCloseScene;
-
-  if (wasHoveringCloseScene !== isHoveringCloseScene) {
-    const transitionStart = isHoveringCloseScene ? 0 : 1;
-    const transitionEnd = isHoveringCloseScene ? 1 : 0;
-    let tweenPosition = 0;
-    if (hoverTweens.closeSceneButton != null) {
-      tweenPosition =
-        constants.UI_HOVER_TRANSITION_TIME -
-        hoverTweens.closeSceneButton.position;
-    }
-
-    hoverState.closeSceneButton.transition = transitionStart;
-    const tween = new Tween(hoverState.closeSceneButton, { override: true }).to(
-      { transition: transitionEnd },
-      constants.UI_HOVER_TRANSITION_TIME,
-      Ease.linear
-    );
-    tween.setPosition(tweenPosition);
-    tween.on("change", () => {
-      closeSceneButtonColor = lerp(
-        constants.UI_COLOR,
-        constants.UI_HOVER_COLOR,
-        hoverState.closeSceneButton.transition
-      );
-    });
-    tween.on("complete", () => {
-      hoverTweens.closeSceneButton = null;
-    });
-    hoverTweens.closeSceneButton = tween;
-  }
+  hoverState.closeSceneButton = testCloseSceneCollision(mousePosition);
 };
 
 const testVideoCollision = (mousePosition: Point, video: Video) => {
@@ -352,6 +287,7 @@ const updateVideoHover = (mousePosition: Point) => {
         tweenPosition =
           constants.VIDEO_HOVER_TRANSITION_TIME -
           hoverTweens.videos[index].position;
+        pausableTweens.delete(hoverTweens.videos[index]);
       }
 
       hoverState.videos[index].transition = transitionStart;
