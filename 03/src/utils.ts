@@ -8,6 +8,7 @@ import {
   RGBA,
   Line,
   Vector,
+  Bounds,
 } from "./types";
 import params from "./params";
 
@@ -107,6 +108,24 @@ export function getDistance(a: Point, b: Point): number {
 
 export function scale(v: Vector, s: number): Vector {
   return { x: v.x * s, y: v.y * s };
+}
+
+export function getBounds(b: Block): Bounds {
+  return {
+    top: b.y,
+    left: b.x,
+    bottom: b.y + b.height,
+    right: b.x + b.width,
+  };
+}
+
+export function getBlock(b: Bounds): Block {
+  return {
+    x: b.top,
+    y: b.left,
+    width: b.right - b.left,
+    height: b.bottom - b.top,
+  };
 }
 
 /**

@@ -11,6 +11,13 @@ export type Block = {
   height: number;
 };
 
+export type Bounds = {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+};
+
 export type Video = { bounds: Block; intersectingBlocks: number[] };
 
 export type Beat = { bars: number; beats: number; sixteenths: number };

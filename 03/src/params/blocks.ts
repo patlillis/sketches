@@ -8,6 +8,7 @@ import {
   getLineBetween,
   getPointAlongLine,
   getDistance,
+  getBounds,
 } from "../utils";
 
 import params from "./index";
@@ -120,42 +121,52 @@ const getBlockBounds = (
 };
 
 const getBlockAdjustmentForVideo = (block: Block, video: Block): Block => {
-  const topDistance = block.y + block.height - video.y;
-  const rightDistance = video.x + video.width - block.x;
-  const leftDistance = block.x + block.width - video.x;
-  const bottomDistance = video.y + video.height - block.y;
+  const videoBounds = getBounds(video);
+  const blockBounds = getBounds(block);
 
-  // TODO: handle case where block doesn't actually intersect with the edge it's
-  // closest to.
+  const topDistance = blockBounds.bottom - videoBounds.top;
+  const rightDistance = videoBounds.right - blockBounds.left;
+  const leftDistance = blockBounds.right - videoBounds.left;
+  const bottomDistance = videoBounds.bottom - blockBounds.top;
+
+  const intersectsTop =
+    blockBounds.top < videoBounds.top && blockBounds.bottom > videoBounds.top;
+  const intersectsRight =
+    blockBounds.left < videoBounds.right &&
+    blockBounds.right > videoBounds.right;
+  const intersectsLeft =
+    blockBounds.left < videoBounds.left && blockBounds.right > videoBounds.left;
+  const intersectsBottom =
+    blockBounds.top < videoBounds.bottom &&
+    blockBounds.bottom > videoBounds.bottom;
+
   const minDistance = Math.min(
-    topDistance,
-    rightDistance,
-    leftDistance,
-    bottomDistance
+    intersectsTop ? topDistance : Infinity,
+    intersectsRight ? rightDistance : Infinity,
+    intersectsLeft ? leftDistance : Infinity,
+    intersectsBottom ? bottomDistance : Infinity
   );
-  let adjustment: Block;
-  switch (minDistance) {
-    case topDistance:
-      // Just need to adjust the height.
-      adjustment = { x: 0, y: 0, width: 0, height: -topDistance };
-      break;
-    case rightDistance:
-      // Need to adjust width and x coordinate.
-      adjustment = { x: rightDistance, y: 0, width: -rightDistance, height: 0 };
-      break;
-    case leftDistance:
-      // Just need to adjust the width.
-      adjustment = { x: 0, y: 0, width: -leftDistance, height: 0 };
-      break;
-    case bottomDistance:
-      // Need to adjust height and y coordinate.
-      adjustment = {
-        x: 0,
-        y: bottomDistance,
-        width: 0,
-        height: -bottomDistance,
-      };
-      break;
+
+  let adjustment: Block = { x: 0, y: 0, width: 0, height: 0 };
+  let isSpecial = false;
+
+  if (minDistance === topDistance && intersectsTop) {
+    // Just need to adjust the height.
+    adjustment = { x: 0, y: 0, width: 0, height: -topDistance };
+  } else if (minDistance === rightDistance && intersectsRight) {
+    // Need to adjust width and x coordinate.
+    adjustment = { x: rightDistance, y: 0, width: -rightDistance, height: 0 };
+  } else if (minDistance === leftDistance && intersectsLeft) {
+    // Just need to adjust the width.
+    adjustment = { x: 0, y: 0, width: -leftDistance, height: 0 };
+  } else if (minDistance === bottomDistance && intersectsBottom) {
+    // Need to adjust height and y coordinate.
+    adjustment = {
+      x: 0,
+      y: bottomDistance,
+      width: 0,
+      height: -bottomDistance,
+    };
   }
 
   return adjustment;
