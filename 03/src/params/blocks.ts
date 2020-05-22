@@ -125,6 +125,8 @@ const getBlockAdjustmentForVideo = (block: Block, video: Block): Block => {
   const leftDistance = block.x + block.width - video.x;
   const bottomDistance = video.y + video.height - block.y;
 
+  // TODO: handle case where block doesn't actually intersect with the edge it's
+  // closest to.
   const minDistance = Math.min(
     topDistance,
     rightDistance,

@@ -27,17 +27,15 @@ let backgroundTransform = { x: 0, y: 0, scale: 1.0 };
 const hoverState = {
   /** Index of video being hovered over. -1 if no video is being hovered. */
   currentVideoIndex: -1,
-  videos: [
-    { current: false, transition: 0 },
-    { current: false, transition: 0 },
-    { current: false, transition: 0 },
-  ],
   playPauseButton: false,
   closeSceneButton: false,
 };
-const hoverTweens = {
-  videos: [] as Tween[],
-};
+const videoActiveTweens: Tween[] = [];
+const videoActiveStates = [
+  { isActive: false, transition: 0 },
+  { isActive: false, transition: 0 },
+  { isActive: false, transition: 0 },
+];
 
 const pausableTweens = new Set<Tween>();
 
@@ -93,7 +91,7 @@ const draw = (time: number) => {
       // Figure out the adjustment to hide the block for hovered video.
       let adjustment: Block = { x: 0, y: 0, width: 0, height: 0 };
       for (const [index, video] of block.intersectingVideos.entries()) {
-        const { transition } = hoverState.videos[index];
+        const { transition } = videoActiveStates[index];
         adjustment.x += video.adjustment.x * transition;
         adjustment.y += video.adjustment.y * transition;
         adjustment.width += video.adjustment.width * transition;
@@ -271,38 +269,64 @@ const testVideoCollision = (mousePosition: Point, video: Video) => {
   );
 };
 
+const updateVideoActiveState = (
+  video: Video,
+  {
+    newIsHovering,
+    newIsInScene,
+  }: { newIsHovering?: boolean; newIsInScene?: boolean }
+) => {
+  const videoIndex = params.videos.indexOf(video);
+  const previousIsHovering = hoverState.currentVideoIndex === videoIndex;
+  const previousIsInScene = getVideoForScene(params.scene.current) === video;
+
+  const previousIsActive = videoActiveStates[videoIndex].isActive;
+  let newIsActive = false;
+  if (newIsHovering || newIsInScene) newIsActive = true;
+  if (newIsInScene == null && previousIsInScene) newIsActive = true;
+
+  videoActiveStates[videoIndex].isActive = newIsActive;
+
+  if (previousIsActive != newIsActive) {
+    const transitionStart = newIsActive ? 0 : 1;
+    const transitionEnd = newIsActive ? 1 : 0;
+    const tweenEasing = newIsActive ? Ease.quintOut : Ease.quintIn;
+    let tweenPosition = 0;
+    if (videoActiveTweens[videoIndex] != null) {
+      tweenPosition =
+        constants.VIDEO_ACTIVE_TRANSITION_TIME -
+        videoActiveTweens[videoIndex].position;
+      pausableTweens.delete(videoActiveTweens[videoIndex]);
+    }
+
+    videoActiveStates[videoIndex].transition = transitionStart;
+    const tween = new Tween(videoActiveStates[videoIndex], {
+      override: true,
+    }).to(
+      { transition: transitionEnd },
+      constants.VIDEO_ACTIVE_TRANSITION_TIME,
+      tweenEasing
+    );
+    tween.setPosition(tweenPosition);
+    tween.on("complete", () => {
+      videoActiveTweens[videoIndex] = null;
+      pausableTweens.delete(tween);
+    });
+    videoActiveTweens[videoIndex] = tween;
+    pausableTweens.add(tween);
+  }
+};
+
 const updateVideoHover = (mousePosition: Point) => {
   let newVideoHoverIndex = -1;
   for (const [index, video] of params.videos.entries()) {
-    const wasHoveringVideo = hoverState.videos[index].current;
+    const wasHoveringVideo = hoverState.currentVideoIndex === index;
     const isHoveringVideo = testVideoCollision(mousePosition, video);
-    hoverState.videos[index].current = isHoveringVideo;
+
+    if (isHoveringVideo) newVideoHoverIndex = index;
 
     if (wasHoveringVideo !== isHoveringVideo) {
-      const transitionStart = isHoveringVideo ? 0 : 1;
-      const transitionEnd = isHoveringVideo ? 1 : 0;
-      const tweenEasing = isHoveringVideo ? Ease.quintOut : Ease.quintIn;
-      let tweenPosition = 0;
-      if (hoverTweens.videos[index] != null) {
-        tweenPosition =
-          constants.VIDEO_HOVER_TRANSITION_TIME -
-          hoverTweens.videos[index].position;
-        pausableTweens.delete(hoverTweens.videos[index]);
-      }
-
-      hoverState.videos[index].transition = transitionStart;
-      const tween = new Tween(hoverState.videos[index], { override: true }).to(
-        { transition: transitionEnd },
-        constants.VIDEO_HOVER_TRANSITION_TIME,
-        tweenEasing
-      );
-      tween.setPosition(tweenPosition);
-      tween.on("complete", () => {
-        hoverTweens.videos[index] = null;
-        pausableTweens.delete(tween);
-      });
-      hoverTweens.videos[index] = tween;
-      pausableTweens.add(tween);
+      updateVideoActiveState(video, { newIsHovering: isHoveringVideo });
     }
   }
 
@@ -374,6 +398,9 @@ function setIsPlaying(playing: boolean) {
 
 function setScene(scene: Scene) {
   const previousScene = params.scene.current;
+  const videoForNewScene = getVideoForScene(scene);
+  const videoForPreviousScene = getVideoForScene(previousScene);
+
   params.scene = {
     current: scene,
     previous: previousScene,
@@ -385,7 +412,23 @@ function setScene(scene: Scene) {
     constants.SCENE_TRANSITION_TIME,
     Ease.quadInOut
   );
-  tween.on("change", updateBackgroundTransform);
+  tween.on("change", () => {
+    updateBackgroundTransform();
+
+    // This makes it so that when we're transitioning back to main scene, the
+    // blocks go back into place at the end of the transition.
+    if (
+      constants.SCENE_TRANSITION_TIME - tween.position <
+      constants.VIDEO_ACTIVE_TRANSITION_TIME
+    ) {
+      if (videoForNewScene != null) {
+        updateVideoActiveState(videoForNewScene, { newIsInScene: true });
+      }
+      if (videoForPreviousScene != null) {
+        updateVideoActiveState(videoForPreviousScene, { newIsInScene: false });
+      }
+    }
+  });
   tween.on("complete", () => pausableTweens.delete(tween));
   pausableTweens.add(tween);
 }

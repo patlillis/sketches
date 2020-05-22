@@ -30,4 +30,4 @@ export const UI_SIZE = 50;
 
 // Timing constants.
 export const SCENE_TRANSITION_TIME = 1500;
-export const VIDEO_HOVER_TRANSITION_TIME = 500;
+export const VIDEO_ACTIVE_TRANSITION_TIME = 500;
