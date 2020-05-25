@@ -18,6 +18,12 @@ export type Bounds = {
   right: number;
 };
 
+export type Circle = {
+  x: number;
+  y: number;
+  radius: number;
+};
+
 export type Video = { bounds: Block; intersectingBlocks: number[] };
 
 export type Beat = { bars: number; beats: number; sixteenths: number };

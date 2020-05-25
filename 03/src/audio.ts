@@ -7,9 +7,9 @@ import tombola from "./tombola";
 import params, { updateParamsBeat } from "./params";
 
 let pianoPlayers: { [key: string]: Tone.Player } = {};
-let currentlyPlayingPianos: { note: string; start: number }[] = [];
+let ereignisPlayers: Tone.Player[];
 
-let reverb: Tone.JCReverb;
+let currentPlaying: { player: Tone.Player; start: number }[] = [];
 
 // For testing, can do `window.playPiano('e');`.
 declare global {
@@ -24,22 +24,42 @@ export const initAudio = async () => {
   Tone.Transport.bpm.value = constants.BPM * 2;
   Tone.Transport.timeSignature = 6;
 
-  const pianoSamples = {
-    a: "assets/sounds/piano_a.wav",
-    c: "assets/sounds/piano_c.wav",
-    e: "assets/sounds/piano_e.wav",
-    f: "assets/sounds/piano_f.wav",
-    g: "assets/sounds/piano_g.wav",
-  };
-  let players: Tone.Players;
-  await new Promise(
-    (resolve) => (players = new Tone.Players(pianoSamples, resolve))
+  // Load samples and set up players.
+  const pianoNotes = ["a", "c", "e", "f", "g"];
+  const pianoSamples = Object.fromEntries(
+    pianoNotes.map((note) => [
+      `piano_${note}`,
+      `assets/sounds/piano_${note}.wav`,
+    ])
   );
-  for (const note of Object.keys(pianoSamples)) {
-    const player = players.player(note);
-    player.toDestination();
+  const samples = {
+    ...pianoSamples,
+    ereignis: "assets/sounds/ereignis.wav",
+  };
+  let loadingPlayers: Tone.Players;
+  await new Promise(
+    (resolve) => (loadingPlayers = new Tone.Players(samples, resolve))
+  );
+
+  // Hook up piano notes.
+  const pianoReverb = new Tone.Reverb({
+    decay: 10,
+    wet: 0.5,
+    preDelay: 0,
+  });
+  const pianoVolume = new Tone.Volume(8);
+  for (const note of pianoNotes) {
+    const player = loadingPlayers.player(`piano_${note}`);
+    player.chain(pianoReverb, pianoVolume, Tone.Destination);
     pianoPlayers[note] = player;
   }
+
+  // Hook up ereignis effect.
+  const ereignisVolume = new Tone.Volume(-7);
+  const ereignisPlayer = loadingPlayers.player("ereignis");
+  ereignisPlayers = [ereignisPlayer, new Tone.Player(ereignisPlayer.buffer)];
+  ereignisPlayers[0].chain(ereignisVolume, Tone.Destination);
+  ereignisPlayers[1].chain(ereignisVolume, Tone.Destination);
 
   // Set up instrument loops.
   const loop = new Tone.Loop(mainLoop, "4n");
@@ -58,13 +78,14 @@ export const startAudio = async () => {
 
 export async function playAudio() {
   Tone.Transport.start();
+  Tone.Destination.mute = false;
 
-  // Re-start all piano parts that were previously playing, and seek to the
-  // position they were stopped at.
+  // Re-start all players that were previously playing, and seek to the position
+  // they were stopped at.
   const currentTime = Tone.Transport.seconds;
-  for (const playing of currentlyPlayingPianos) {
-    const player = pianoPlayers[playing.note];
-    const offset = currentTime - playing.start;
+  const currentBeat = toBeat(Tone.Transport.position.toString());
+  for (const { player, start } of currentPlaying) {
+    const offset = currentTime - start;
     player.start();
     player.seek(offset);
   }
@@ -72,11 +93,23 @@ export async function playAudio() {
 
 export async function pauseAudio() {
   Tone.Transport.pause();
+  Tone.Destination.mute = true;
 
-  for (const playing of currentlyPlayingPianos) {
-    pianoPlayers[playing.note].stop();
+  for (const { player } of currentPlaying) {
+    player.stop();
   }
 }
+
+const startPlayer = (player: Tone.Player, time: number) => {
+  currentPlaying.push({ player, start: time });
+  // After player is finished, remove from currently playing list.
+  Tone.Transport.scheduleOnce(() => {
+    currentPlaying = currentPlaying.filter(
+      (p) => !(p.player === player && p.start === time)
+    );
+  }, time + player.buffer.duration);
+  player.start();
+};
 
 const mainLoop = () => {
   const time = Tone.Transport.seconds;
@@ -87,22 +120,21 @@ const mainLoop = () => {
 
   // Play notes for this beat.
   playPiano(beat, time);
+  playEreignis(beat, time);
 };
 
 const playPiano = (beat: Beat, time: number) => {
+  // Play on the first beat of every other bar.
   if (beat.bars % 2 == 0 && beat.beats % 6 === 0) {
     const { note } = params.audio.piano;
     const player = pianoPlayers[note];
+    startPlayer(player, time);
+  }
+};
 
-    // Keep track of when each note is played so we can properly pause/restart.
-    currentlyPlayingPianos.push({ note, start: time });
-    Tone.Transport.scheduleOnce(() => {
-      // After player is finished, remove from currently playing list.
-      currentlyPlayingPianos = currentlyPlayingPianos.filter(
-        (p) => !(p.note === note && p.start === time)
-      );
-    }, time + player.buffer.duration);
-
-    pianoPlayers[params.audio.piano.note].start();
+const playEreignis = (beat: Beat, time: number) => {
+  if (beat.bars % 2 == 0 && beat.beats % 6 === 0) {
+    const player = ereignisPlayers[(beat.bars / 2) % 2];
+    startPlayer(player, time);
   }
 };

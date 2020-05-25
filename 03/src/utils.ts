@@ -10,6 +10,7 @@ import {
   Vector,
   Bounds,
   Color,
+  Circle,
 } from "./types";
 import params from "./params";
 
@@ -143,25 +144,43 @@ export function intersects(a: Block, b: Block): boolean {
 
 export function enclosedIn(a: Block, b: Block): boolean;
 export function enclosedIn(a: Point, b: Block): boolean;
+export function enclosedIn(a: Point, b: Circle): boolean;
 
 /**
  * Determines whether `a` is enclosed entirely within `b`.
  */
-export function enclosedIn(a: any, b: Block): boolean {
+export function enclosedIn(a: any, b: any): boolean {
   if (a.height != null && a.width != null) {
-    // Testing a block.
-    if (a.x < b.x) return false;
-    if (a.x + a.width > b.x + b.width) return false;
-    if (a.y < b.y) return false;
-    if (a.y + a.height > b.y + b.height) return false;
-  } else {
-    // Testing a point.
-    if (a.x < b.x) return false;
-    if (a.x > b.x + b.width) return false;
-    if (a.y < b.y) return false;
-    if (a.y > b.y + b.height) return false;
+    // Testing a block is enclosed in a block.
+    const aBlock = a as Block;
+    const bBlock = b as Block;
+    if (aBlock.x < bBlock.x) return false;
+    if (aBlock.x + aBlock.width > bBlock.x + bBlock.width) return false;
+    if (aBlock.y < bBlock.y) return false;
+    if (aBlock.y + aBlock.height > bBlock.y + bBlock.height) return false;
+    return true;
   }
 
+  if (b.radius != null) {
+    // Testing if a point is enclosed in a circle.
+    const aPoint = a as Point;
+    const bCircle = b as Circle;
+    if (
+      (aPoint.x - bCircle.x) ** 2 + (aPoint.y - bCircle.y) ** 2 >
+      bCircle.radius ** 2
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  // Testing if a point is enclosed in a block.
+  const aPoint = a as Point;
+  const bBlock = b as Block;
+  if (aPoint.x < bBlock.x) return false;
+  if (aPoint.x > bBlock.x + bBlock.width) return false;
+  if (aPoint.y < bBlock.y) return false;
+  if (aPoint.y > bBlock.y + bBlock.height) return false;
   return true;
 }
 

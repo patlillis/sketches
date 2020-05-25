@@ -6,12 +6,12 @@ import {
   enclosedIn,
   getSceneForVideo,
   getVideoForScene,
+  getVideoIndexForScene,
   calculateTransformForVideo,
   lerp,
   colorToString,
-  scale,
 } from "./utils";
-import { Block, Point, Scene, Video } from "./types";
+import { Block, Point, Scene, Video, Circle } from "./types";
 import { playAudio, pauseAudio } from "./audio";
 import { Palette, loadPalette } from "./palette";
 
@@ -22,8 +22,12 @@ export let palette: Palette;
 
 /*********** Random variables to track state. *******************/
 
-const circleSynths: { center: Point; radius: number; note: string }[] = [
-  { center: { x: 1050, y: 350 }, radius: 100, note: "e4" },
+type CircleSynth = { bounds: Circle; note: string };
+const circleSynths: CircleSynth[] = [
+  {
+    bounds: { x: 1050, y: 350, radius: 100 },
+    note: "e4",
+  },
 ];
 
 /** Whether the video is paused or not. */
@@ -35,6 +39,9 @@ const hoverState = {
   circleSynths: circleSynths.map(() => false),
   playPauseButton: false,
   closeSceneButton: false,
+};
+const pressState = {
+  circleSynths: circleSynths.map(() => false),
 };
 const videoActiveTweens: Tween[] = [];
 const videoActiveStates = [
@@ -59,7 +66,15 @@ export const initScene = async (
 
   // Add canvas event listeners.
   canvasElement.addEventListener("mousedown", onMouseClick, { capture: false });
-  canvasElement.addEventListener("mousemove", onMouseMove, { capture: false });
+  canvasElement.addEventListener(
+    "mousemove",
+    ({ pageX: x, pageY: y }) => onMouseMove({ x, y }),
+    { capture: false }
+  );
+  canvasElement.addEventListener("mouseup", onMouseRelease, { capture: false });
+  canvasElement.addEventListener("mouseleave", onMouseRelease, {
+    capture: false,
+  });
 
   // Initialize canvas size.
   canvasElement.width = window.innerWidth;
@@ -91,9 +106,28 @@ const draw = (time: number) => {
     ctx.scale(backgroundTransform.scale, backgroundTransform.scale);
 
     // Draw videos.
-    params.videos.forEach((video, index) => {
+    params.videos.forEach((video, videoIndex) => {
       ctx.drawImage(
         videoElement,
+        video.bounds.x,
+        video.bounds.y,
+        video.bounds.width,
+        video.bounds.height
+      );
+
+      // TODO: remove once there are different videos to play.
+      switch (videoIndex) {
+        case 0:
+          ctx.strokeStyle = "rgba(0,0,255,1)";
+          break;
+        case 1:
+          ctx.strokeStyle = "rgba(0,255,0,1)";
+          break;
+        case 2:
+          ctx.strokeStyle = "rgba(255,0,0,1)";
+          break;
+      }
+      ctx.strokeRect(
         video.bounds.x,
         video.bounds.y,
         video.bounds.width,
@@ -124,15 +158,48 @@ const draw = (time: number) => {
   });
 
   // Draw circle pads.
-  wrapDraw(() => {
-    for (const synth of circleSynths) {
-      ctx.beginPath();
-      ctx.arc(synth.center.x, synth.center.y, synth.radius, 0, 2 * Math.PI);
-      // ctx.
-      ctx.fillStyle = "rgba(0, 0, 255, 0.7)";
-      ctx.fill();
-    }
-  });
+  if (
+    params.scene.current === Scene.Video0 &&
+    params.scene.transition === 1.0
+  ) {
+    wrapDraw(() => {
+      ctx.globalAlpha = 0.8;
+
+      for (const [synthIndex, synth] of circleSynths.entries()) {
+        if (
+          hoverState.circleSynths[synthIndex] ||
+          pressState.circleSynths[synthIndex]
+        ) {
+          ctx.beginPath();
+          ctx.arc(
+            synth.bounds.x,
+            synth.bounds.y,
+            synth.bounds.radius,
+            0,
+            2 * Math.PI
+          );
+          ctx.fillStyle = colorToString(
+            pressState.circleSynths[synthIndex]
+              ? palette.circleSynthPressed
+              : palette.circleSynth
+          );
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(
+            synth.bounds.x,
+            synth.bounds.y,
+            synth.bounds.radius - constants.UI_THICKNESS / 2,
+            0,
+            2 * Math.PI
+          );
+          ctx.strokeStyle = colorToString(palette.circleSynth);
+          ctx.lineWidth = constants.UI_THICKNESS;
+          ctx.stroke();
+        }
+      }
+    });
+  }
 
   // Draw play/pause UI.
   const drawPlayPause = () => {
@@ -282,6 +349,24 @@ const updateCloseSceneHover = (mousePosition: Point) => {
   hoverState.closeSceneButton = testCloseSceneCollision(mousePosition);
 };
 
+const testCircleSynthCollision = (mousePosition: Point, synth: CircleSynth) => {
+  return (
+    isPlaying &&
+    params.scene.current === Scene.Video0 &&
+    params.scene.transition === 1 &&
+    enclosedIn(mousePosition, synth.bounds)
+  );
+};
+
+const updateCircleSynthsHover = (mousePosition: Point) => {
+  for (const [synthIndex, synth] of circleSynths.entries()) {
+    hoverState.circleSynths[synthIndex] = testCircleSynthCollision(
+      mousePosition,
+      synth
+    );
+  }
+};
+
 const testVideoCollision = (mousePosition: Point, video: Video) => {
   return (
     isPlaying &&
@@ -292,14 +377,13 @@ const testVideoCollision = (mousePosition: Point, video: Video) => {
 };
 
 const updateVideoActiveState = (
-  video: Video,
+  videoIndex: number,
   {
     newIsHovering,
     newIsInScene,
   }: { newIsHovering?: boolean; newIsInScene?: boolean }
 ) => {
-  const videoIndex = params.videos.indexOf(video);
-  const previousIsHovering = hoverState.videos[videoIndex];
+  const video = params.videos[videoIndex];
   const previousIsInScene = getVideoForScene(params.scene.current) === video;
 
   const previousIsActive = videoActiveStates[videoIndex].isActive;
@@ -340,14 +424,14 @@ const updateVideoActiveState = (
 };
 
 const updateVideoHover = (mousePosition: Point) => {
-  for (const [index, video] of params.videos.entries()) {
-    const wasHoveringVideo = hoverState.videos[index];
+  for (const [videoIndex, video] of params.videos.entries()) {
+    const wasHoveringVideo = hoverState.videos[videoIndex];
     const isHoveringVideo = testVideoCollision(mousePosition, video);
 
-    hoverState.videos[index] = isHoveringVideo;
+    hoverState.videos[videoIndex] = isHoveringVideo;
 
     if (wasHoveringVideo !== isHoveringVideo) {
-      updateVideoActiveState(video, { newIsHovering: isHoveringVideo });
+      updateVideoActiveState(videoIndex, { newIsHovering: isHoveringVideo });
     }
   }
 };
@@ -375,11 +459,19 @@ const onMouseClick = (event: MouseEvent) => {
       return;
     }
   }
+
+  // Check if clicked on circle synths.
+  for (const [synthIndex, synth] of circleSynths.entries()) {
+    if (testCircleSynthCollision(mousePosition, synth)) {
+      pressState.circleSynths[synthIndex] = true;
+
+      // TODO: start playback.
+      console.log(`Started playing synth ${synth.note}`);
+    }
+  }
 };
 
-const onMouseMove = (event: MouseEvent) => {
-  const mousePosition: Point = { x: event.pageX, y: event.pageY };
-
+const onMouseMove = (mousePosition: Point) => {
   // Check if play/pause is hovered.
   updatePlayPauseHover(mousePosition);
 
@@ -388,6 +480,26 @@ const onMouseMove = (event: MouseEvent) => {
 
   // Check if videos are hovered.
   updateVideoHover(mousePosition);
+
+  // Check if circle synths are hovered.
+  updateCircleSynthsHover(mousePosition);
+};
+
+const onMouseRelease = (event: MouseEvent) => {
+  // Track release of any circle synths being pressed.
+  pressState.circleSynths = pressState.circleSynths.map(
+    (wasPressed, synthIndex) => {
+      const synth = circleSynths[synthIndex];
+
+      // TODO: stop playback.
+      if (wasPressed) console.log(`Stopped playing synth ${synth.note}`);
+
+      return false;
+    }
+  );
+
+  // Make sure to update hover tracking so that things aren't hovered any more.
+  onMouseMove({ x: -1000, y: -1000 });
 };
 
 function setIsPlaying(playing: boolean) {
@@ -416,8 +528,8 @@ function setIsPlaying(playing: boolean) {
 
 function setScene(scene: Scene) {
   const previousScene = params.scene.current;
-  const videoForNewScene = getVideoForScene(scene);
-  const videoForPreviousScene = getVideoForScene(previousScene);
+  const videoIndexForNewScene = getVideoIndexForScene(scene);
+  const videoIndexForPreviousScene = getVideoIndexForScene(previousScene);
 
   params.scene = {
     current: scene,
@@ -439,11 +551,13 @@ function setScene(scene: Scene) {
       constants.SCENE_TRANSITION_TIME - tween.position <
       constants.VIDEO_ACTIVE_TRANSITION_TIME
     ) {
-      if (videoForNewScene != null) {
-        updateVideoActiveState(videoForNewScene, { newIsInScene: true });
+      if (videoIndexForNewScene != -1) {
+        updateVideoActiveState(videoIndexForNewScene, { newIsInScene: true });
       }
-      if (videoForPreviousScene != null) {
-        updateVideoActiveState(videoForPreviousScene, { newIsInScene: false });
+      if (videoIndexForPreviousScene != -1) {
+        updateVideoActiveState(videoIndexForPreviousScene, {
+          newIsInScene: false,
+        });
       }
     }
   });

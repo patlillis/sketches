@@ -22,6 +22,7 @@ export const BPM = 95;
 // UI constants.
 export const UI_PADDING = 30;
 export const UI_SIZE = 50;
+export const UI_THICKNESS = 5;
 
 // Timing constants.
 export const SCENE_TRANSITION_TIME = 1500;
