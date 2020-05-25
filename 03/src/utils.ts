@@ -9,6 +9,7 @@ import {
   Line,
   Vector,
   Bounds,
+  Color,
 } from "./types";
 import params from "./params";
 
@@ -303,19 +304,66 @@ function rgbaToString(color: RGBA): string {
   return `rgba(${color.r} ${color.g} ${color.b} / ${color.a})`;
 }
 
-export function colorToString(color: HSLA): string;
-export function colorToString(color: RGBA): string;
-
-export function colorToString(color: any): string {
+export function colorToString(color: Color): string {
   if (typeof color !== "object") throw new Error("Colors must be objects.");
 
   if (["h", "s", "l", "a"].every((c) => color.hasOwnProperty(c))) {
-    return hslaToString(color);
+    return hslaToString(color as HSLA);
   }
 
   if (["r", "g", "b", "a"].every((c) => color.hasOwnProperty(c))) {
-    return rgbaToString(color);
+    return rgbaToString(color as RGBA);
   }
 
   throw new Error("This isn't a color..");
+}
+
+/**
+ * Converts an RGBA color value to HSLA.
+ */
+export function rgbaToHsla(color: RGBA): HSLA {
+  const adjusted = {
+    r: color.r / 255,
+    g: color.g / 255,
+    b: color.b / 255,
+  };
+
+  const max = Math.max(adjusted.r, adjusted.g, adjusted.b);
+  const min = Math.min(adjusted.r, adjusted.g, adjusted.b);
+  const delta = max - min;
+
+  let h: number;
+  let s: number;
+  let l: number;
+
+  if (delta == 0) {
+    // No difference.
+    h = 0;
+  } else if (max == adjusted.r) {
+    // Red is max.
+    h = ((adjusted.g - adjusted.b) / delta) % 6;
+  } else if (max == adjusted.g) {
+    // Green is max.
+    h = (adjusted.b - adjusted.r) / delta + 2;
+  } else {
+    // Blue is max.
+    h = (adjusted.r - adjusted.g) / delta + 4;
+  }
+
+  h = Math.round(h * 60);
+
+  // Make negative hues positive behind 360°.
+  if (h < 0) h += 360;
+
+  // Calculate lightness
+  l = (max + min) / 2;
+
+  // Calculate saturation
+  s = delta == 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+
+  // Multiply l and s by 100
+  s = parseInt((s * 100).toFixed(1), 10);
+  l = parseInt((l * 100).toFixed(1), 10);
+
+  return { h, s, l, a: color.a };
 }

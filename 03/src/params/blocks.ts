@@ -1,17 +1,10 @@
 import { Block, Beat, Vector, Point } from "../types";
 import tombola from "../tombola";
 import * as constants from "../constants";
-import {
-  shuffleArray,
-  enclosedIn,
-  intersects,
-  getLineBetween,
-  getPointAlongLine,
-  getDistance,
-  getBounds,
-} from "../utils";
+import { shuffleArray, enclosedIn, intersects, getBounds } from "../utils";
 
 import params from "./index";
+import { palette } from "../scene";
 
 const getBlockBounds = (
   screenWidth: number,
@@ -185,9 +178,9 @@ export const randomizeBlocks = (
     .map((block) => ({
       ...block,
       color: {
-        r: constants.BLOCK_BASE_COLOR.r,
-        g: constants.BLOCK_BASE_COLOR.g,
-        b: constants.BLOCK_BASE_COLOR.b + tombola.fudge(200, 0.1),
+        r: palette.blockBase.r,
+        g: palette.blockBase.g,
+        b: palette.blockBase.b + tombola.fudge(200, 0.1),
         a: 1,
       },
       colorChangeDirection: tombola.item([-1, 1]),
@@ -217,8 +210,8 @@ export const randomizeBlocks = (
 };
 
 export const updateBlocksTick = () => {
-  const minB = constants.BLOCK_BASE_COLOR.b - 20;
-  const maxB = constants.BLOCK_BASE_COLOR.b + 20;
+  const minB = palette.blockBase.b - 20;
+  const maxB = palette.blockBase.b + 20;
 
   params.blocks.forEach((block) => {
     block.color.b += tombola.rangeFloat(0, 0.75) * block.colorChangeDirection;

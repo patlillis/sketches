@@ -13,20 +13,26 @@ import {
 } from "./utils";
 import { Block, Point, Scene, Video } from "./types";
 import { playAudio, pauseAudio } from "./audio";
+import { Palette, loadPalette } from "./palette";
 
 export let videoElement: HTMLVideoElement;
 export let canvasElement: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
+export let palette: Palette;
 
 /*********** Random variables to track state. *******************/
+
+const circleSynths: { center: Point; radius: number; note: string }[] = [
+  { center: { x: 1050, y: 350 }, radius: 100, note: "e4" },
+];
 
 /** Whether the video is paused or not. */
 let isPlaying = false;
 /** The transform for "zooming in" on a video. Affects videos and blocks. */
 let backgroundTransform = { x: 0, y: 0, scale: 1.0 };
 const hoverState = {
-  /** Index of video being hovered over. -1 if no video is being hovered. */
-  currentVideoIndex: -1,
+  videos: [false, false, false],
+  circleSynths: circleSynths.map(() => false),
   playPauseButton: false,
   closeSceneButton: false,
 };
@@ -43,20 +49,29 @@ export const initScene = async (
   canvas: HTMLCanvasElement,
   video: HTMLVideoElement
 ) => {
+  // Load color palette.
+  palette = await loadPalette("assets/palette.png");
+
+  // Store references to important variables.
   canvasElement = canvas;
   ctx = canvasElement.getContext("2d");
   videoElement = video;
 
+  // Add canvas event listeners.
   canvasElement.addEventListener("mousedown", onMouseClick, { capture: false });
   canvasElement.addEventListener("mousemove", onMouseMove, { capture: false });
 
+  // Initialize canvas size.
   canvasElement.width = window.innerWidth;
   canvasElement.height = window.innerHeight;
 
+  // Initialize random params.
   initParams(canvasElement.width, canvasElement.height);
 
+  // Initialize background transform.
   updateBackgroundTransform();
 
+  // Make sure tweenjs updates timing properly.
   Ticker.timingMode = Ticker.RAF;
 };
 
@@ -108,6 +123,17 @@ const draw = (time: number) => {
     });
   });
 
+  // Draw circle pads.
+  wrapDraw(() => {
+    for (const synth of circleSynths) {
+      ctx.beginPath();
+      ctx.arc(synth.center.x, synth.center.y, synth.radius, 0, 2 * Math.PI);
+      // ctx.
+      ctx.fillStyle = "rgba(0, 0, 255, 0.7)";
+      ctx.fill();
+    }
+  });
+
   // Draw play/pause UI.
   const drawPlayPause = () => {
     if (isPlaying) {
@@ -153,9 +179,7 @@ const draw = (time: number) => {
   });
 
   wrapDraw(() => {
-    const color = hoverState.playPauseButton
-      ? constants.UI_HOVER_COLOR
-      : constants.UI_COLOR;
+    const color = hoverState.playPauseButton ? palette.uiHover : palette.ui;
     ctx.fillStyle = colorToString(color);
     drawPlayPause();
   });
@@ -198,9 +222,7 @@ const draw = (time: number) => {
     });
 
     wrapDraw(() => {
-      const color = hoverState.closeSceneButton
-        ? constants.UI_HOVER_COLOR
-        : constants.UI_COLOR;
+      const color = hoverState.closeSceneButton ? palette.uiHover : palette.ui;
       ctx.fillStyle = colorToString(color);
       drawCloseScene();
     });
@@ -277,7 +299,7 @@ const updateVideoActiveState = (
   }: { newIsHovering?: boolean; newIsInScene?: boolean }
 ) => {
   const videoIndex = params.videos.indexOf(video);
-  const previousIsHovering = hoverState.currentVideoIndex === videoIndex;
+  const previousIsHovering = hoverState.videos[videoIndex];
   const previousIsInScene = getVideoForScene(params.scene.current) === video;
 
   const previousIsActive = videoActiveStates[videoIndex].isActive;
@@ -318,20 +340,16 @@ const updateVideoActiveState = (
 };
 
 const updateVideoHover = (mousePosition: Point) => {
-  let newVideoHoverIndex = -1;
   for (const [index, video] of params.videos.entries()) {
-    const wasHoveringVideo = hoverState.currentVideoIndex === index;
+    const wasHoveringVideo = hoverState.videos[index];
     const isHoveringVideo = testVideoCollision(mousePosition, video);
 
-    if (isHoveringVideo) newVideoHoverIndex = index;
+    hoverState.videos[index] = isHoveringVideo;
 
     if (wasHoveringVideo !== isHoveringVideo) {
       updateVideoActiveState(video, { newIsHovering: isHoveringVideo });
     }
   }
-
-  // Update index with hover results.
-  hoverState.currentVideoIndex = newVideoHoverIndex;
 };
 
 const onMouseClick = (event: MouseEvent) => {

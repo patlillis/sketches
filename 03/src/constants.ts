@@ -16,11 +16,6 @@ export const BLOCK_MAX_ASPECT = 1.0 + BLOCK_ASPECT_DIFFERENCE;
 export const BLOCK_MIN_SIZE = 100;
 export const BLOCK_MAX_SIZE = 150;
 
-// Color constants.
-export const BLOCK_BASE_COLOR: RGBA = { r: 30, g: 0, b: 27, a: 1 };
-export const UI_COLOR: HSLA = { h: 0, s: 0, l: 100, a: 1 };
-export const UI_HOVER_COLOR: HSLA = { h: 40, s: 90, l: 61, a: 1 };
-
 // Audio constants.
 export const BPM = 95;
 
