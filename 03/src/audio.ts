@@ -1,12 +1,13 @@
 import * as Tone from "tone";
 
 import * as constants from "./constants";
-import { Beat } from "./types";
+import { Beat, Scene } from "./types";
 import { toBeat } from "./utils";
 import tombola from "./tombola";
 import params, { updateParamsBeat } from "./params";
 
 let pianoPlayers: { [key: string]: Tone.Player } = {};
+let pianoArpPlayer: Tone.Player;
 let ereignisPlayers: Tone.Player[];
 
 let currentPlaying: { player: Tone.Player; start: number }[] = [];
@@ -34,6 +35,7 @@ export const initAudio = async () => {
   );
   const samples = {
     ...pianoSamples,
+    piano_arp: "assets/sounds/piano_arp.wav",
     ereignis: "assets/sounds/ereignis.wav",
   };
   let loadingPlayers: Tone.Players;
@@ -53,6 +55,16 @@ export const initAudio = async () => {
     player.chain(pianoReverb, pianoVolume, Tone.Destination);
     pianoPlayers[note] = player;
   }
+
+  // Hooke up piano arp.
+  pianoArpPlayer = loadingPlayers.player("piano_arp");
+  const pianoArpReverb = new Tone.Reverb({
+    decay: 10,
+    wet: 0.5,
+    preDelay: 0,
+  });
+  const pianoArpVolume = new Tone.Volume(-100);
+  pianoArpPlayer.chain(pianoArpReverb, pianoArpVolume, Tone.Destination);
 
   // Hook up ereignis effect.
   const ereignisVolume = new Tone.Volume(-7);
@@ -120,6 +132,7 @@ const mainLoop = () => {
 
   // Play notes for this beat.
   playPiano(beat, time);
+  playPianoArp(beat, time);
   playEreignis(beat, time);
 };
 
@@ -129,6 +142,12 @@ const playPiano = (beat: Beat, time: number) => {
     const { note } = params.audio.piano;
     const player = pianoPlayers[note];
     startPlayer(player, time);
+  }
+};
+
+const playPianoArp = (beat: Beat, time: number) => {
+  if (beat.bars % 4 == 0 && beat.beats % 6 === 0) {
+    startPlayer(pianoArpPlayer, time);
   }
 };
 
