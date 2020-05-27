@@ -3,14 +3,14 @@ import * as Tone from "tone";
 import * as constants from "./constants";
 import { Beat, Scene } from "./types";
 import { toBeat } from "./utils";
-import tombola from "./tombola";
 import params, { updateParamsBeat } from "./params";
 
 let pianoPlayers: { [key: string]: Tone.Player } = {};
 let pianoArpPlayer: Tone.Player;
 let ereignisPlayers: Tone.Player[];
-
 let currentPlaying: { player: Tone.Player; start: number }[] = [];
+
+export const pianoArpVolume = new Tone.Volume(-100);
 
 // For testing, can do `window.playPiano('e');`.
 declare global {
@@ -63,7 +63,6 @@ export const initAudio = async () => {
     wet: 0.5,
     preDelay: 0,
   });
-  const pianoArpVolume = new Tone.Volume(-100);
   pianoArpPlayer.chain(pianoArpReverb, pianoArpVolume, Tone.Destination);
 
   // Hook up ereignis effect.
@@ -113,6 +112,9 @@ export async function pauseAudio() {
 }
 
 const startPlayer = (player: Tone.Player, time: number) => {
+  // Remove current playing record for this player.
+  currentPlaying = currentPlaying.filter(p => p.player !== player);
+
   currentPlaying.push({ player, start: time });
   // After player is finished, remove from currently playing list.
   Tone.Transport.scheduleOnce(() => {
@@ -146,7 +148,7 @@ const playPiano = (beat: Beat, time: number) => {
 };
 
 const playPianoArp = (beat: Beat, time: number) => {
-  if (beat.bars % 4 == 0 && beat.beats % 6 === 0) {
+  if (beat.bars % 8 == 0 && beat.beats % 6 === 0) {
     startPlayer(pianoArpPlayer, time);
   }
 };

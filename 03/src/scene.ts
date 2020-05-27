@@ -141,10 +141,7 @@ const draw = (time: number) => {
       let adjustment: Block = { x: 0, y: 0, width: 0, height: 0 };
       for (const [index, video] of block.intersectingVideos.entries()) {
         const { transition } = videoActiveStates[index];
-        adjustment.x += video.adjustment.x * transition;
-        adjustment.y += video.adjustment.y * transition;
-        adjustment.width += video.adjustment.width * transition;
-        adjustment.height += video.adjustment.height * transition;
+        adjustment = lerp(adjustment, video.adjustment, transition)
       }
 
       ctx.fillStyle = colorToString(block.color);

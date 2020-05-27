@@ -295,21 +295,26 @@ const lerpObject = (
   return result;
 };
 
-export function lerp(start: number, end: number, t: number): number;
-export function lerp(start: number[], end: number[], t: number): number[];
+export type Ease = (amount: number) => number;
+
+export function lerp(start: number, end: number, t: number, ease?: Ease): number;
+export function lerp(start: number[], end: number[], t: number, ease?: Ease): number[];
 export function lerp<T extends { [key: string]: number }>(
   start: T,
   end: T,
-  t: number
+  t: number,
+  ease?: Ease
 ): T;
 
-export function lerp(start: any, end: any, t: number): any {
+export function lerp(start: any, end: any, t: number, ease?: Ease): any {
+  const adjustedT = ease?.(t) ?? t;
+
   switch (typeof start) {
     case "number":
-      return lerpNumber(start, end, t);
+      return lerpNumber(start, end, adjustedT);
     case "object":
-      if (Array.isArray(start)) return lerpArray(start, end, t);
-      return lerpObject(start, end, t);
+      if (Array.isArray(start)) return lerpArray(start, end, adjustedT);
+      return lerpObject(start, end, adjustedT);
     default:
       throw new Error("Don't know how to interpolate this type of thing.");
   }
