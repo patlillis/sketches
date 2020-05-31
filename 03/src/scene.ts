@@ -30,7 +30,7 @@ export let palette: Palette;
 type CircleSynth = { bounds: Circle; note: string };
 const circleSynths: CircleSynth[] = [
   {
-    bounds: { x: 1050, y: 350, radius: 100 },
+    bounds: { x: 550, y: 350, radius: 100 },
     note: "b4",
   },
 ];
@@ -500,6 +500,10 @@ const onMouseRelease = (event: MouseEvent) => {
   // Make sure to update hover tracking so that things aren't hovered any more.
   onMouseMove({ x: -1000, y: -1000 });
 };
+
+export function toggleIsPlaying() {
+  setIsPlaying(!isPlaying);
+}
 
 function setIsPlaying(playing: boolean) {
   isPlaying = playing;

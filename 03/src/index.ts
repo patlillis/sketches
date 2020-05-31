@@ -1,10 +1,14 @@
-import { initScene, startScene, resizeScene } from "./scene";
+import * as constants from "./constants";
+import { initScene, startScene, resizeScene, toggleIsPlaying } from "./scene";
 import { initAudio, startAudio } from "./audio";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const video = document.getElementById("video") as HTMLVideoElement;
 const startButton = document.getElementById("start");
 const startButtonWrapper = document.getElementById("start-wrapper");
+
+/** Whether the whole thing has been started. */
+let isStarted = false;
 
 const onInit = async () => {
   startButton.textContent = "LOADING...";
@@ -17,10 +21,19 @@ const onInit = async () => {
 
   const requireUserInteraction = true;
   if (!requireUserInteraction) {
-    startButtonWrapper.remove();
-    await startScene();
-    await startAudio();
+    await onStartClicked();
   }
+
+  // Catch spacebar presses for play/pause.
+  document.addEventListener("keydown", (event) => {
+    if (event.keyCode === constants.KEYCODE_SPACEBAR) {
+      if (!isStarted) {
+        onStartClicked();
+      } else {
+        toggleIsPlaying();
+      }
+    }
+  });
 };
 
 const onResize = () => {
@@ -28,8 +41,9 @@ const onResize = () => {
 };
 
 const onStartClicked = async () => {
+  isStarted = true;
   startButtonWrapper.remove();
-  startScene();
+  await startScene();
   await startAudio();
 };
 

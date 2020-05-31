@@ -27,3 +27,6 @@ export const UI_THICKNESS = 5;
 // Timing constants.
 export const SCENE_TRANSITION_TIME = 1500;
 export const VIDEO_ACTIVE_TRANSITION_TIME = 500;
+
+// Key codes.
+export const KEYCODE_SPACEBAR = 32;
