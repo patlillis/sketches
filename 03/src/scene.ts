@@ -12,7 +12,12 @@ import {
   colorToString,
 } from "./utils";
 import { Block, Point, Scene, Video, Circle } from "./types";
-import { playAudio, pauseAudio } from "./audio";
+import {
+  playAudio,
+  pauseAudio,
+  startPlayingObertonreich,
+  stopPlayingObertonreich,
+} from "./audio";
 import { Palette, loadPalette } from "./palette";
 
 export let videoElement: HTMLVideoElement;
@@ -26,7 +31,7 @@ type CircleSynth = { bounds: Circle; note: string };
 const circleSynths: CircleSynth[] = [
   {
     bounds: { x: 1050, y: 350, radius: 100 },
-    note: "e4",
+    note: "b4",
   },
 ];
 
@@ -141,7 +146,7 @@ const draw = (time: number) => {
       let adjustment: Block = { x: 0, y: 0, width: 0, height: 0 };
       for (const [index, video] of block.intersectingVideos.entries()) {
         const { transition } = videoActiveStates[index];
-        adjustment = lerp(adjustment, video.adjustment, transition)
+        adjustment = lerp(adjustment, video.adjustment, transition);
       }
 
       ctx.fillStyle = colorToString(block.color);
@@ -238,7 +243,7 @@ const draw = (time: number) => {
   };
   wrapDraw(() => {
     ctx.fillStyle = "black";
-    ctx.translate(-2, -2);
+    ctx.translate(-5, -5);
     drawPlayPause();
   });
 
@@ -281,7 +286,7 @@ const draw = (time: number) => {
     };
     wrapDraw(() => {
       ctx.fillStyle = "black";
-      ctx.translate(-2, -2);
+      ctx.translate(-5, -5);
       drawCloseScene();
     });
 
@@ -461,9 +466,7 @@ const onMouseClick = (event: MouseEvent) => {
   for (const [synthIndex, synth] of circleSynths.entries()) {
     if (testCircleSynthCollision(mousePosition, synth)) {
       pressState.circleSynths[synthIndex] = true;
-
-      // TODO: start playback.
-      console.log(`Started playing synth ${synth.note}`);
+      startPlayingObertonreich(synth.note);
     }
   }
 };
@@ -488,8 +491,7 @@ const onMouseRelease = (event: MouseEvent) => {
     (wasPressed, synthIndex) => {
       const synth = circleSynths[synthIndex];
 
-      // TODO: stop playback.
-      if (wasPressed) console.log(`Stopped playing synth ${synth.note}`);
+      if (wasPressed) stopPlayingObertonreich(synth.note);
 
       return false;
     }

@@ -5,12 +5,34 @@ import { Beat, Scene } from "./types";
 import { toBeat } from "./utils";
 import params, { updateParamsBeat } from "./params";
 
-let pianoPlayers: { [key: string]: Tone.Player } = {};
+let pianoPlayers: { [note: string]: Tone.Player } = {};
 let pianoArpPlayer: Tone.Player;
 let ereignisPlayers: Tone.Player[];
-let currentPlaying: { player: Tone.Player; start: number }[] = [];
+let periodischPlayer: Tone.Player;
+let obertonreichPlayers: {
+  [note: string]: {
+    player: Tone.Player;
+    envelope: Tone.Envelope;
+  };
+} = {};
 
+let currentlyPlaying: {
+  player: Tone.Player;
+  start: number;
+  afterStopEvent: Tone.ToneEvent;
+}[] = [];
+
+/** These are the controls exposed to other components to tweak/tween. */
+export const periodischVolume = new Tone.Volume(-100);
 export const pianoArpVolume = new Tone.Volume(-100);
+export const startPlayingObertonreich = (note: string) => {
+  const { envelope } = obertonreichPlayers[note];
+  envelope.triggerAttack();
+};
+export const stopPlayingObertonreich = (note: string) => {
+  const { envelope } = obertonreichPlayers[note];
+  envelope.triggerRelease();
+};
 
 // For testing, can do `window.playPiano('e');`.
 declare global {
@@ -30,13 +52,22 @@ export const initAudio = async () => {
   const pianoSamples = Object.fromEntries(
     pianoNotes.map((note) => [
       `piano_${note}`,
-      `assets/sounds/piano_${note}.wav`,
+      `assets/sounds/piano/${note}.wav`,
+    ])
+  );
+  const obertonreichNotes = ["b4"];
+  const obertonreichSamples = Object.fromEntries(
+    obertonreichNotes.map((note) => [
+      `obertonreich_${note}`,
+      `assets/sounds/obertonreich/${note}.wav`,
     ])
   );
   const samples = {
     ...pianoSamples,
+    ...obertonreichSamples,
     piano_arp: "assets/sounds/piano_arp.wav",
     ereignis: "assets/sounds/ereignis.wav",
+    periodisch: "assets/sounds/periodisch.wav",
   };
   let loadingPlayers: Tone.Players;
   await new Promise(
@@ -72,6 +103,36 @@ export const initAudio = async () => {
   ereignisPlayers[0].chain(ereignisVolume, Tone.Destination);
   ereignisPlayers[1].chain(ereignisVolume, Tone.Destination);
 
+  // Hook up periodisch effect.
+  periodischPlayer = loadingPlayers.player("periodisch");
+  periodischPlayer.loop = true;
+  periodischPlayer.chain(periodischVolume, Tone.Destination);
+
+  // Hook up obertonreich samples.
+  const obertonreichReverb = new Tone.Reverb({
+    decay: 20,
+    wet: 0.7,
+    preDelay: 0,
+  });
+  const obertonreichVolume = new Tone.Volume(0);
+  for (const note of obertonreichNotes) {
+    const player = loadingPlayers.player(`obertonreich_${note}`);
+    player.loop = true;
+    const envelope = new Tone.AmplitudeEnvelope({
+      attack: 1,
+      decay: 0,
+      sustain: 1,
+      release: 10,
+    });
+    obertonreichPlayers[note] = { player, envelope };
+    player.chain(
+      obertonreichReverb,
+      obertonreichVolume,
+      envelope,
+      Tone.Destination
+    );
+  }
+
   // Set up instrument loops.
   const loop = new Tone.Loop(mainLoop, "4n");
   loop.start(0);
@@ -94,8 +155,7 @@ export async function playAudio() {
   // Re-start all players that were previously playing, and seek to the position
   // they were stopped at.
   const currentTime = Tone.Transport.seconds;
-  const currentBeat = toBeat(Tone.Transport.position.toString());
-  for (const { player, start } of currentPlaying) {
+  for (const { player, start } of currentlyPlaying) {
     const offset = currentTime - start;
     player.start();
     player.seek(offset);
@@ -106,56 +166,92 @@ export async function pauseAudio() {
   Tone.Transport.pause();
   Tone.Destination.mute = true;
 
-  for (const { player } of currentPlaying) {
+  for (const { player } of currentlyPlaying) {
     player.stop();
   }
 }
 
-const startPlayer = (player: Tone.Player, time: number) => {
-  // Remove current playing record for this player.
-  currentPlaying = currentPlaying.filter(p => p.player !== player);
+const startPlayer = (player: Tone.Player) => {
+  const start = Tone.Transport.seconds;
 
-  currentPlaying.push({ player, start: time });
+  // Remove current playing record for this player.
+  currentlyPlaying = currentlyPlaying.filter((p) => p.player !== player);
+
   // After player is finished, remove from currently playing list.
-  Tone.Transport.scheduleOnce(() => {
-    currentPlaying = currentPlaying.filter(
-      (p) => !(p.player === player && p.start === time)
-    );
-  }, time + player.buffer.duration);
-  player.start();
+  let afterStopEvent: Tone.ToneEvent;
+  if (!player.loop) {
+    afterStopEvent = new Tone.ToneEvent(() => {
+      currentlyPlaying = currentlyPlaying.filter(
+        (p) => !(p.player === player && p.start === start)
+      );
+    });
+    afterStopEvent.start(start + player.buffer.duration);
+  }
+  currentlyPlaying.push({ player, start, afterStopEvent });
+  player.start(start, 0);
+};
+
+const stopPlayer = (player: Tone.Player) => {
+  player.stop();
+  const currentlyPlayingRecords = currentlyPlaying.filter(
+    (p) => p.player === player
+  );
+  for (const { afterStopEvent } of currentlyPlayingRecords) {
+    if (afterStopEvent != null) afterStopEvent.cancel();
+  }
+
+  // Remove current playing record for this player.
+  currentlyPlaying = currentlyPlaying.filter((p) => p.player !== player);
 };
 
 const mainLoop = () => {
-  const time = Tone.Transport.seconds;
   const beat: Beat = toBeat(Tone.Transport.position.toString());
 
   // Update audio params for this beat.
-  updateParamsBeat(beat, time);
+  updateParamsBeat(beat);
 
   // Play notes for this beat.
-  playPiano(beat, time);
-  playPianoArp(beat, time);
-  playEreignis(beat, time);
+  playPiano(beat);
+  playPianoArp(beat);
+  playEreignis(beat);
+  playPeriodisch(beat);
+  playObertonreich(beat);
 };
 
-const playPiano = (beat: Beat, time: number) => {
+const playPiano = (beat: Beat) => {
   // Play on the first beat of every other bar.
   if (beat.bars % 2 == 0 && beat.beats % 6 === 0) {
     const { note } = params.audio.piano;
     const player = pianoPlayers[note];
-    startPlayer(player, time);
+    startPlayer(player);
   }
 };
 
-const playPianoArp = (beat: Beat, time: number) => {
+const playPianoArp = (beat: Beat) => {
   if (beat.bars % 8 == 0 && beat.beats % 6 === 0) {
-    startPlayer(pianoArpPlayer, time);
+    startPlayer(pianoArpPlayer);
   }
 };
 
-const playEreignis = (beat: Beat, time: number) => {
+const playEreignis = (beat: Beat) => {
   if (beat.bars % 2 == 0 && beat.beats % 6 === 0) {
     const player = ereignisPlayers[(beat.bars / 2) % 2];
-    startPlayer(player, time);
+    startPlayer(player);
+  }
+};
+
+const playPeriodisch = (beat: Beat) => {
+  // Just start playing at beginning, and control volume manually.
+  if (beat.bars === 0 && beat.beats === 0) {
+    startPlayer(periodischPlayer);
+  }
+};
+
+const playObertonreich = (beat: Beat) => {
+  // Just start playing at beginning, and control volume manually.
+  if (beat.bars === 0 && beat.beats === 0) {
+    for (const { player: full } of Object.values(obertonreichPlayers)) {
+      startPlayer(full);
+    }
   }
 };

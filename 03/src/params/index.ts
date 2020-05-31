@@ -64,7 +64,7 @@ export const updateParamsTick = () => {
 /**
  * Update params per beat.
  */
-export const updateParamsBeat = (beat: Beat, time: number) => {
+export const updateParamsBeat = (beat: Beat) => {
   updateVideosBeat(beat);
   updateBlocksBeat(beat);
   updateAudioBeat(beat);
