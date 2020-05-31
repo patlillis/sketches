@@ -1,5 +1,7 @@
 import { RGBA, HSLA } from "./types";
 
+export const DEBUG = true;
+
 // Video constants.
 export const VIDEO_HEIGHT = 240;
 export const VIDEO_WIDTH = 427;

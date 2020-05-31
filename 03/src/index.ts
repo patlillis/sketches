@@ -12,7 +12,6 @@ let isStarted = false;
 
 const onInit = async () => {
   startButton.textContent = "LOADING...";
-  startButton.toggleAttribute("disabled");
 
   await Promise.all([initScene(canvas, video), initAudio()]);
 

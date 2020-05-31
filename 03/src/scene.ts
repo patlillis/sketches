@@ -17,6 +17,7 @@ import {
   pauseAudio,
   startPlayingObertonreich,
   stopPlayingObertonreich,
+  meter,
 } from "./audio";
 import { Palette, loadPalette } from "./palette";
 
@@ -30,8 +31,12 @@ export let palette: Palette;
 type CircleSynth = { bounds: Circle; note: string };
 const circleSynths: CircleSynth[] = [
   {
-    bounds: { x: 550, y: 350, radius: 100 },
     note: "b4",
+    bounds: { x: 550, y: 350, radius: 100 },
+  },
+  {
+    note: "e5",
+    bounds: { x: 650, y: 400, radius: 140 },
   },
 ];
 
@@ -56,6 +61,7 @@ const videoActiveStates = [
 ];
 
 const pausableTweens = new Set<Tween>();
+let previousFrameTime: number;
 
 export const initScene = async (
   canvas: HTMLCanvasElement,
@@ -102,6 +108,15 @@ const wrapDraw = (drawFunc: () => void) => {
 };
 
 const draw = (time: number) => {
+  // Track FPS.
+  const now = performance.now();
+  let fps: number;
+  if (previousFrameTime != null) {
+    const frameMs = now - previousFrameTime;
+    fps = 1000 / frameMs;
+  }
+  previousFrameTime = now;
+
   // Clear.
   ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
@@ -199,6 +214,27 @@ const draw = (time: number) => {
           ctx.lineWidth = constants.UI_THICKNESS;
           ctx.stroke();
         }
+      }
+    });
+  }
+
+  // Draw dB meter.
+  if (constants.DEBUG) {
+    wrapDraw(() => {
+      const level = meter.getValue();
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "white";
+      ctx.fillText(
+        `${(level as number).toFixed(0)}dB`,
+        constants.UI_PADDING,
+        constants.UI_PADDING
+      );
+      if (fps != null && fps !== Infinity) {
+        ctx.fillText(
+          `${fps.toFixed(1)}fps`,
+          constants.UI_PADDING,
+          constants.UI_PADDING + 24
+        );
       }
     });
   }

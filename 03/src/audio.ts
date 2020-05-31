@@ -22,6 +22,10 @@ let currentlyPlaying: {
   afterStopEvent: Tone.ToneEvent;
 }[] = [];
 
+const master = new Tone.Volume(0);
+const meter = new Tone.Meter({ smoothing: 0.7 });
+master.chain(meter, Tone.Destination);
+
 /** These are the controls exposed to other components to tweak/tween. */
 export const periodischVolume = new Tone.Volume(-100);
 export const pianoArpVolume = new Tone.Volume(-100);
@@ -33,6 +37,7 @@ export const stopPlayingObertonreich = (note: string) => {
   const { envelope } = obertonreichPlayers[note];
   envelope.triggerRelease();
 };
+export { meter };
 
 // For testing, can do `window.playPiano('e');`.
 declare global {
@@ -55,7 +60,7 @@ export const initAudio = async () => {
       `assets/sounds/piano/${note}.wav`,
     ])
   );
-  const obertonreichNotes = ["b4"];
+  const obertonreichNotes = ["d4", "e4", "g4", "a4", "b4", "c5", "e5", "g5"];
   const obertonreichSamples = Object.fromEntries(
     obertonreichNotes.map((note) => [
       `obertonreich_${note}`,
@@ -83,7 +88,7 @@ export const initAudio = async () => {
   const pianoVolume = new Tone.Volume(8);
   for (const note of pianoNotes) {
     const player = loadingPlayers.player(`piano_${note}`);
-    player.chain(pianoReverb, pianoVolume, Tone.Destination);
+    player.chain(pianoReverb, pianoVolume, master);
     pianoPlayers[note] = player;
   }
 
@@ -94,30 +99,32 @@ export const initAudio = async () => {
     wet: 0.5,
     preDelay: 0,
   });
-  pianoArpPlayer.chain(pianoArpReverb, pianoArpVolume, Tone.Destination);
+  pianoArpPlayer.chain(pianoArpReverb, pianoArpVolume, master);
 
   // Hook up ereignis effect.
   const ereignisVolume = new Tone.Volume(-7);
   const ereignisPlayer = loadingPlayers.player("ereignis");
   ereignisPlayers = [ereignisPlayer, new Tone.Player(ereignisPlayer.buffer)];
-  ereignisPlayers[0].chain(ereignisVolume, Tone.Destination);
-  ereignisPlayers[1].chain(ereignisVolume, Tone.Destination);
+  ereignisPlayers[0].chain(ereignisVolume, master);
+  ereignisPlayers[1].chain(ereignisVolume, master);
 
   // Hook up periodisch effect.
   periodischPlayer = loadingPlayers.player("periodisch");
   periodischPlayer.loop = true;
-  periodischPlayer.chain(periodischVolume, Tone.Destination);
+  periodischPlayer.chain(periodischVolume, master);
 
   // Hook up obertonreich samples.
-  const obertonreichReverb = new Tone.Reverb({
-    decay: 20,
-    wet: 0.7,
-    preDelay: 0,
-  });
-  const obertonreichVolume = new Tone.Volume(0);
+  // const obertonreichLimiter = new Tone.Limiter(-20);
+  // obertonreichLimiter.connect(Tone.Destination);
   for (const note of obertonreichNotes) {
     const player = loadingPlayers.player(`obertonreich_${note}`);
     player.loop = true;
+    const reverb = new Tone.Reverb({
+      decay: 20,
+      wet: 0.7,
+      preDelay: 0,
+    });
+    const volume = new Tone.Volume(0);
     const envelope = new Tone.AmplitudeEnvelope({
       attack: 1,
       decay: 0,
@@ -125,12 +132,7 @@ export const initAudio = async () => {
       release: 10,
     });
     obertonreichPlayers[note] = { player, envelope };
-    player.chain(
-      obertonreichReverb,
-      obertonreichVolume,
-      envelope,
-      Tone.Destination
-    );
+    player.chain(reverb, volume, envelope, master);
   }
 
   // Set up instrument loops.
@@ -250,8 +252,8 @@ const playPeriodisch = (beat: Beat) => {
 const playObertonreich = (beat: Beat) => {
   // Just start playing at beginning, and control volume manually.
   if (beat.bars === 0 && beat.beats === 0) {
-    for (const { player: full } of Object.values(obertonreichPlayers)) {
-      startPlayer(full);
+    for (const { player } of Object.values(obertonreichPlayers)) {
+      startPlayer(player);
     }
   }
 };
