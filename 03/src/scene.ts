@@ -30,14 +30,14 @@ export let palette: Palette;
 
 type CircleSynth = { bounds: Circle; note: string };
 const circleSynths: CircleSynth[] = [
-  {
-    note: "b4",
-    bounds: { x: 550, y: 350, radius: 100 },
-  },
-  {
-    note: "e5",
-    bounds: { x: 650, y: 400, radius: 140 },
-  },
+  { note: "d4", bounds: { x: 450, y: 375, radius: 50 } },
+  { note: "e4", bounds: { x: 595, y: 230, radius: 25 } },
+  { note: "g4", bounds: { x: 860, y: 455, radius: 135 } },
+  { note: "a4", bounds: { x: 725, y: 275, radius: 75 } },
+  { note: "b4", bounds: { x: 550, y: 350, radius: 100 } },
+  { note: "c5", bounds: { x: 600, y: 300, radius: 75 } },
+  { note: "d5", bounds: { x: 860, y: 235, radius: 105 } },
+  { note: "e5", bounds: { x: 650, y: 400, radius: 140 } },
 ];
 
 /** Whether the video is paused or not. */
@@ -51,7 +51,7 @@ const hoverState = {
   closeSceneButton: false,
 };
 const pressState = {
-  circleSynths: circleSynths.map(() => false),
+  circleSynths: false,
 };
 const videoActiveTweens: Tween[] = [];
 const videoActiveStates = [
@@ -180,13 +180,10 @@ const draw = (time: number) => {
     params.scene.transition === 1.0
   ) {
     wrapDraw(() => {
-      ctx.globalAlpha = 0.8;
+      ctx.globalAlpha = 0.5;
 
       for (const [synthIndex, synth] of circleSynths.entries()) {
-        if (
-          hoverState.circleSynths[synthIndex] ||
-          pressState.circleSynths[synthIndex]
-        ) {
+        if (hoverState.circleSynths[synthIndex]) {
           ctx.beginPath();
           ctx.arc(
             synth.bounds.x,
@@ -196,7 +193,7 @@ const draw = (time: number) => {
             2 * Math.PI
           );
           ctx.fillStyle = colorToString(
-            pressState.circleSynths[synthIndex]
+            pressState.circleSynths
               ? palette.circleSynthPressed
               : palette.circleSynth
           );
@@ -398,10 +395,15 @@ const testCircleSynthCollision = (mousePosition: Point, synth: CircleSynth) => {
 
 const updateCircleSynthsHover = (mousePosition: Point) => {
   for (const [synthIndex, synth] of circleSynths.entries()) {
-    hoverState.circleSynths[synthIndex] = testCircleSynthCollision(
-      mousePosition,
-      synth
-    );
+    const wasHovering = hoverState.circleSynths[synthIndex];
+    const isHovering = testCircleSynthCollision(mousePosition, synth);
+
+    if (pressState.circleSynths) {
+      if (wasHovering && !isHovering) stopPlayingObertonreich(synth.note);
+      if (!wasHovering && isHovering) startPlayingObertonreich(synth.note);
+    }
+
+    hoverState.circleSynths[synthIndex] = isHovering;
   }
 };
 
@@ -501,7 +503,7 @@ const onMouseClick = (event: MouseEvent) => {
   // Check if clicked on circle synths.
   for (const [synthIndex, synth] of circleSynths.entries()) {
     if (testCircleSynthCollision(mousePosition, synth)) {
-      pressState.circleSynths[synthIndex] = true;
+      pressState.circleSynths = true;
       startPlayingObertonreich(synth.note);
     }
   }
@@ -523,18 +525,16 @@ const onMouseMove = (mousePosition: Point) => {
 
 const onMouseRelease = (event: MouseEvent) => {
   // Track release of any circle synths being pressed.
-  pressState.circleSynths = pressState.circleSynths.map(
-    (wasPressed, synthIndex) => {
-      const synth = circleSynths[synthIndex];
+  pressState.circleSynths = false;
 
-      if (wasPressed) stopPlayingObertonreich(synth.note);
-
-      return false;
+  for (const [synthIndex, synth] of circleSynths.entries()) {
+    if (hoverState.circleSynths[synthIndex]) {
+      stopPlayingObertonreich(synth.note);
     }
-  );
+  }
 
   // Make sure to update hover tracking so that things aren't hovered any more.
-  onMouseMove({ x: -1000, y: -1000 });
+  // onMouseMove({ x: -1000, y: -1000 });
 };
 
 export function toggleIsPlaying() {

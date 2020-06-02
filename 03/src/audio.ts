@@ -60,7 +60,17 @@ export const initAudio = async () => {
       `assets/sounds/piano/${note}.wav`,
     ])
   );
-  const obertonreichNotes = ["d4", "e4", "g4", "a4", "b4", "c5", "e5", "g5"];
+  const obertonreichNotes = [
+    "d4",
+    "e4",
+    "g4",
+    "a4",
+    "b4",
+    "c5",
+    "d5",
+    "e5",
+    "g5",
+  ];
   const obertonreichSamples = Object.fromEntries(
     obertonreichNotes.map((note) => [
       `obertonreich_${note}`,
@@ -114,8 +124,8 @@ export const initAudio = async () => {
   periodischPlayer.chain(periodischVolume, master);
 
   // Hook up obertonreich samples.
-  // const obertonreichLimiter = new Tone.Limiter(-20);
-  // obertonreichLimiter.connect(Tone.Destination);
+  const obertonreichLimiter = new Tone.Limiter(0);
+  obertonreichLimiter.chain(master);
   for (const note of obertonreichNotes) {
     const player = loadingPlayers.player(`obertonreich_${note}`);
     player.loop = true;
@@ -124,15 +134,15 @@ export const initAudio = async () => {
       wet: 0.7,
       preDelay: 0,
     });
-    const volume = new Tone.Volume(0);
+    const volume = new Tone.Volume(-6);
     const envelope = new Tone.AmplitudeEnvelope({
-      attack: 1,
+      attack: 0.1,
       decay: 0,
       sustain: 1,
       release: 10,
     });
     obertonreichPlayers[note] = { player, envelope };
-    player.chain(reverb, volume, envelope, master);
+    player.chain(reverb, volume, envelope, obertonreichLimiter);
   }
 
   // Set up instrument loops.
