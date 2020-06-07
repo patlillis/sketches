@@ -1,10 +1,12 @@
+import * as Tone from "tone";
+import { Ease } from "@createjs/tweenjs";
+
 import { Beat, Scene } from "../types";
 
 import params from "./index";
 import tombola from "../tombola";
-import { pianoArpVolume, periodischVolume } from "../audio";
+import { pianoArpVolume, periodischVolume, videoVolumes } from "../audio";
 import { lerp } from "../utils";
-import { Ease } from "@createjs/tweenjs";
 
 export const randomizeAudio = () => {
   params.audio = {
@@ -17,7 +19,8 @@ export const randomizeAudio = () => {
 export const updateAudioTick = () => {
   // Update volumes while transitioning.
   switch (params.scene.current) {
-    case Scene.Main:
+    case Scene.Main: {
+      let previousVideoVolume: Tone.Volume;
       if (params.scene.previous === Scene.Video0) {
         // Set piano arp volume.
         const newPianoArpVolume = lerp(
@@ -35,9 +38,21 @@ export const updateAudioTick = () => {
           Ease.getPowIn(4)
         );
         periodischVolume.volume.value = newPeriodischVolume;
+
+        previousVideoVolume = videoVolumes[0];
+      }
+      if (previousVideoVolume != null) {
+        const newVideoVolume = lerp(
+          10,
+          -100,
+          params.scene.transition,
+          Ease.getPowIn(4)
+        );
+        previousVideoVolume.volume.value = newVideoVolume;
       }
       break;
-    case Scene.Video0:
+    }
+    case Scene.Video0: {
       if (params.scene.previous === Scene.Main) {
         // Set piano arp volume.
         const newPianoArpVolume = lerp(
@@ -55,8 +70,16 @@ export const updateAudioTick = () => {
           Ease.getPowOut(4)
         );
         periodischVolume.volume.value = newPeriodischVolume;
+        const newVideoVolume = lerp(
+          -100,
+          10,
+          params.scene.transition,
+          Ease.getPowIn(4)
+        );
+        videoVolumes[0].volume.value = newVideoVolume;
       }
       break;
+    }
   }
 };
 

@@ -3,7 +3,8 @@ import { initScene, startScene, resizeScene, toggleIsPlaying } from "./scene";
 import { initAudio, startAudio } from "./audio";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-const video = document.getElementById("video") as HTMLVideoElement;
+const video0 = document.getElementById("video0") as HTMLVideoElement;
+const video1 = document.getElementById("video1") as HTMLVideoElement;
 const startButton = document.getElementById("start");
 const startButtonWrapper = document.getElementById("start-wrapper");
 
@@ -13,7 +14,8 @@ let isStarted = false;
 const onInit = async () => {
   startButton.textContent = "LOADING...";
 
-  await Promise.all([initScene(canvas, video), initAudio()]);
+  const videos = [video0, video1];
+  await Promise.all([initScene(canvas, videos), initAudio(videos)]);
 
   startButton.textContent = "START";
   startButton.removeAttribute("disabled");

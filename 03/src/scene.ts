@@ -21,7 +21,7 @@ import {
 } from "./audio";
 import { Palette, loadPalette } from "./palette";
 
-export let videoElement: HTMLVideoElement;
+export let videoElements: HTMLVideoElement[];
 export let canvasElement: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
 export let palette: Palette;
@@ -65,7 +65,7 @@ let previousFrameTime: number;
 
 export const initScene = async (
   canvas: HTMLCanvasElement,
-  video: HTMLVideoElement
+  videos: HTMLVideoElement[]
 ) => {
   // Load color palette.
   palette = await loadPalette("assets/palette.png");
@@ -73,7 +73,7 @@ export const initScene = async (
   // Store references to important variables.
   canvasElement = canvas;
   ctx = canvasElement.getContext("2d");
-  videoElement = video;
+  videoElements = videos;
 
   // Add canvas event listeners.
   canvasElement.addEventListener("mousedown", onMouseClick, { capture: false });
@@ -128,7 +128,7 @@ const draw = (time: number) => {
     // Draw videos.
     params.videos.forEach((video, videoIndex) => {
       ctx.drawImage(
-        videoElement,
+        videoElements[videoIndex % videoElements.length],
         video.bounds.x,
         video.bounds.y,
         video.bounds.width,
@@ -341,7 +341,7 @@ const draw = (time: number) => {
 
 export const startScene = async () => {
   isPlaying = true;
-  videoElement.play();
+  for (const videoElement of videoElements) videoElement.play();
   requestAnimationFrame(draw);
   canvasElement.classList.remove("hidden");
 };
@@ -549,7 +549,7 @@ function setIsPlaying(playing: boolean) {
     playAudio();
 
     // Play videos.
-    videoElement.play();
+    for (const videoElement of videoElements) videoElement.play();
 
     // Resume tweens.
     for (const tween of pausableTweens) tween.paused = false;
@@ -558,7 +558,7 @@ function setIsPlaying(playing: boolean) {
     pauseAudio();
 
     // Pause videos.
-    videoElement.pause();
+    for (const videoElement of videoElements) videoElement.pause();
 
     // Pause tweens.
     for (const tween of pausableTweens) tween.paused = true;

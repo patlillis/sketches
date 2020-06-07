@@ -29,6 +29,7 @@ master.chain(meter, Tone.Destination);
 /** These are the controls exposed to other components to tweak/tween. */
 export const periodischVolume = new Tone.Volume(-100);
 export const pianoArpVolume = new Tone.Volume(-100);
+export const videoVolumes: Tone.Volume[] = [];
 export const startPlayingObertonreich = (note: string) => {
   const { envelope } = obertonreichPlayers[note];
   envelope.triggerAttack();
@@ -46,7 +47,7 @@ declare global {
   }
 }
 
-export const initAudio = async () => {
+export const initAudio = async (videoElements: HTMLVideoElement[]) => {
   // This is a little weird, but this basically makes it 6/8 time in our desired
   // BPM (it's actually 6/4 at twice our BPM).
   Tone.Transport.bpm.value = constants.BPM * 2;
@@ -143,6 +144,16 @@ export const initAudio = async () => {
     });
     obertonreichPlayers[note] = { player, envelope };
     player.chain(reverb, volume, envelope, obertonreichLimiter);
+  }
+
+  // Hook up video audio through Tone.js
+  for (const video of videoElements) {
+    const videoVolume = new Tone.Volume(-100);
+    videoVolume.connect(master);
+    videoVolumes.push(videoVolume);
+    const context = Tone.context.rawContext as AudioContext;
+    const videoSource = context.createMediaElementSource(video);
+    Tone.connect(videoSource, videoVolume);
   }
 
   // Set up instrument loops.
