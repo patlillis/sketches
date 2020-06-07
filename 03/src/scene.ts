@@ -75,16 +75,48 @@ export const initScene = async (
   ctx = canvasElement.getContext("2d");
   videoElements = videos;
 
+  // Add video event listeners. This lets us hook into OS-native media controls,
+  // such as touch-bar or Chrome's media controls.
+  for (const video of videoElements) {
+    video.addEventListener(
+      "pause",
+      () => {
+        if (isPlaying) setIsPlaying(false);
+      },
+      {
+        capture: false,
+        passive: true,
+      }
+    );
+    video.addEventListener(
+      "play",
+      () => {
+        if (!isPlaying) setIsPlaying(true);
+      },
+      {
+        capture: false,
+        passive: true,
+      }
+    );
+  }
+
   // Add canvas event listeners.
-  canvasElement.addEventListener("mousedown", onMouseClick, { capture: false });
+  canvasElement.addEventListener("mousedown", onMouseClick, {
+    capture: false,
+    passive: true,
+  });
   canvasElement.addEventListener(
     "mousemove",
     ({ pageX: x, pageY: y }) => onMouseMove({ x, y }),
     { capture: false }
   );
-  canvasElement.addEventListener("mouseup", onMouseRelease, { capture: false });
+  canvasElement.addEventListener("mouseup", onMouseRelease, {
+    capture: false,
+    passive: true,
+  });
   canvasElement.addEventListener("mouseleave", onMouseRelease, {
     capture: false,
+    passive: true,
   });
 
   // Initialize canvas size.
