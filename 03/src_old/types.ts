@@ -44,8 +44,9 @@ export type HSLA = {
 export type Color = RGBA | HSLA;
 
 export enum Scene {
-  Title = "Title",
-  Harp = "Harp",
-  Circle = "Circle",
-  Phone = "Phone",
+  Main = "Main",
+  // TODO: give these meaningful names based on the video clip.
+  Video0 = "Video0",
+  Video1 = "Video1",
+  Video2 = "Video2",
 }

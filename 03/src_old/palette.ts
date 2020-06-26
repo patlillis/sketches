@@ -2,7 +2,11 @@ import { RGBA, HSLA } from "./types";
 import { rgbaToHsla } from "./utils";
 
 type Palette = {
-  background: HSLA;
+  blockBase: RGBA;
+  ui: HSLA;
+  uiHover: HSLA;
+  circleSynth: HSLA;
+  circleSynthPressed: HSLA;
 };
 
 const loadPalette = async (imgPath: string): Promise<Palette> =>
@@ -32,7 +36,11 @@ const loadPalette = async (imgPath: string): Promise<Palette> =>
       }
 
       const palette: Palette = {
-        background: rgbaToHsla(colors[0]),
+        blockBase: colors[0],
+        ui: rgbaToHsla(colors[1]),
+        uiHover: rgbaToHsla(colors[2]),
+        circleSynth: rgbaToHsla(colors[3]),
+        circleSynthPressed: rgbaToHsla(colors[4]),
       };
       resolve(palette);
     };

@@ -3,6 +3,7 @@ import * as Tone from "tone";
 import * as constants from "./constants";
 import { Beat, Scene } from "./types";
 import { toBeat } from "./utils";
+import params, { updateParamsBeat } from "./params";
 
 let pianoPlayers: { [note: string]: Tone.Player } = {};
 let pianoArpPlayer: Tone.Player;
@@ -229,6 +230,9 @@ const stopPlayer = (player: Tone.Player) => {
 const mainLoop = () => {
   const beat: Beat = toBeat(Tone.Transport.position.toString());
 
+  // Update audio params for this beat.
+  updateParamsBeat(beat);
+
   // Play notes for this beat.
   playPiano(beat);
   playPianoArp(beat);
@@ -238,11 +242,9 @@ const mainLoop = () => {
 };
 
 const playPiano = (beat: Beat) => {
-  const noteOrder = ["f", "g", "c", "e"];
-
   // Play on the first beat of every other bar.
   if (beat.bars % 2 == 0 && beat.beats % 6 === 0) {
-    const note = noteOrder[(beat.bars / 2) % noteOrder.length];
+    const { note } = params.audio.piano;
     const player = pianoPlayers[note];
     startPlayer(player);
   }

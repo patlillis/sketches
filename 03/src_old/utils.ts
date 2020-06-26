@@ -12,6 +12,7 @@ import {
   Color,
   Circle,
 } from "./types";
+import params from "./params";
 
 /**
  * Shuffles an array, and returns a new array.
@@ -184,22 +185,52 @@ export function enclosedIn(a: any, b: any): boolean {
 }
 
 /**
+ * Get the video corresponding to the given scene.
+ *
+ * Returns `undefined` if the given scene has no corresponding video.
+ */
+export function getVideoForScene(scene: Scene) {
+  return params.videos[getVideoIndexForScene(scene)];
+}
+
+/**
  * Get the video index corresponding to the given scene.
  *
  * Returns `-1` if the given scene has no corresponding video.
  */
-// export function getVideoIndexForScene(scene: Scene) {
-//   switch (scene) {
-//     case Scene.Video0:
-//       return 0;
-//     case Scene.Video1:
-//       return 1;
-//     case Scene.Video2:
-//       return 2;
-//     default:
-//       return -1;
-//   }
-// }
+export function getVideoIndexForScene(scene: Scene) {
+  switch (scene) {
+    case Scene.Video0:
+      return 0;
+    case Scene.Video1:
+      return 1;
+    case Scene.Video2:
+      return 2;
+    default:
+      return -1;
+  }
+}
+
+/**
+ * Get the scene corresponding to the given video
+ */
+export function getSceneForVideo(video: Video): Scene {
+  let videoIndex = -1;
+  for (const [index, videoEntry] of params.videos.entries()) {
+    if (videoEntry === video) videoIndex = index;
+  }
+
+  switch (videoIndex) {
+    case 0:
+      return Scene.Video0;
+    case 1:
+      return Scene.Video1;
+    case 2:
+      return Scene.Video2;
+    default:
+      return null;
+  }
+}
 
 /**
  * Calculates the final background transform for the given video.
@@ -266,18 +297,8 @@ const lerpObject = (
 
 export type Ease = (amount: number) => number;
 
-export function lerp(
-  start: number,
-  end: number,
-  t: number,
-  ease?: Ease
-): number;
-export function lerp(
-  start: number[],
-  end: number[],
-  t: number,
-  ease?: Ease
-): number[];
+export function lerp(start: number, end: number, t: number, ease?: Ease): number;
+export function lerp(start: number[], end: number[], t: number, ease?: Ease): number[];
 export function lerp<T extends { [key: string]: number }>(
   start: T,
   end: T,
@@ -297,25 +318,6 @@ export function lerp(start: any, end: any, t: number, ease?: Ease): any {
     default:
       throw new Error("Don't know how to interpolate this type of thing.");
   }
-}
-
-export function inverseLerp(
-  start: number,
-  end: number,
-  value: number,
-  inverseEase?: Ease
-): number {
-  const t = start === end ? 0 : (value - start) / (end - start);
-  return inverseEase?.(t) ?? t;
-}
-
-export function remapValues(
-  input: { start: number; end: number },
-  output: { start: number; end: number },
-  value: number
-): number {
-  const t = inverseLerp(input.start, input.end, value);
-  return lerp(output.start, output.end, t);
 }
 
 function hslaToString(color: HSLA): string {

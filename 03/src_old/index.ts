@@ -1,4 +1,5 @@
-import { initScene, startScene, resizeScene } from "./scene";
+import * as constants from "./constants";
+import { initScene, startScene, resizeScene, toggleIsPlaying } from "./scene";
 import { initAudio, startAudio } from "./audio";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -23,10 +24,21 @@ const onInit = async () => {
   if (!requireUserInteraction) {
     await onStartClicked();
   }
+
+  // Catch spacebar presses for play/pause.
+  document.addEventListener("keydown", (event) => {
+    if (event.keyCode === constants.KEYCODE_SPACEBAR) {
+      if (!isStarted) {
+        onStartClicked();
+      } else {
+        toggleIsPlaying();
+      }
+    }
+  });
 };
 
 const onResize = () => {
-  resizeScene({ x: window.innerWidth, y: window.innerHeight });
+  resizeScene();
 };
 
 const onStartClicked = async () => {
