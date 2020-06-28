@@ -1,8 +1,8 @@
 import { Tween, Ease, Ticker } from "@createjs/tweenjs";
 
 import * as constants from "./constants";
-import { colorToString, remapValues } from "./utils";
-import { Point, Scene, Vector } from "./types";
+import { colorToString, remapValues, getPointOnCircle } from "./utils";
+import { Point, Scene, Vector, Circle } from "./types";
 import { meter } from "./audio";
 import { Palette, loadPalette } from "./palette";
 import { resizeParams } from "./params";
@@ -18,7 +18,8 @@ let currentScene: Scene = Scene.Circle;
 let circles: {
   speed: number;
   radius: number;
-  offset: number;
+  centerOffset: Vector;
+  currentSpinPosition: number;
 }[];
 
 declare global {
@@ -82,23 +83,61 @@ export const initScene = async (
   Ticker.timingMode = Ticker.RAF;
 
   // Initialize circles.
+  const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
+  const minCanvasSizeHalf = minCanvasSize / 2;
+  const minEdgePadding =
+    constants.circle.MIN_EDGE_PADDING_PERCENT * minCanvasSize;
+  const maxEdgePadding =
+    constants.circle.MAX_EDGE_PADDING_PERCENT * minCanvasSize;
+  const maxCenterOffset =
+    constants.circle.MAX_CENTER_OFFEST_PERCENT * minCanvasSize;
   circles = Array.from({
     length: constants.circle.CIRCLE_COUNT,
   }).map(() => {
-    const minCanvasSize =
-      Math.min(canvasElement.width, canvasElement.height) / 2;
     return {
       speed: tombola.rangeFloat(
         constants.circle.MIN_SPEED,
         constants.circle.MAX_SPEED
       ),
       radius: tombola.rangeFloat(
-        minCanvasSize - constants.circle.MAX_EDGE_PADDING,
-        minCanvasSize - constants.circle.MIN_EDGE_PADDING
+        minCanvasSizeHalf - maxEdgePadding,
+        minCanvasSizeHalf - minEdgePadding
       ),
-      offset: tombola.rangeFloat(0, 2 * Math.PI),
+      centerOffset: {
+        x: tombola.rangeFloat(-maxCenterOffset, maxCenterOffset),
+        y: tombola.rangeFloat(-maxCenterOffset, maxCenterOffset),
+      },
+      currentSpinPosition: tombola.rangeFloat(0, 2 * Math.PI),
     };
   });
+
+  // Push a min-size and max-size circle.
+  if (constants.DEBUG) {
+    circles.push({
+      speed: tombola.rangeFloat(
+        constants.circle.MIN_SPEED,
+        constants.circle.MAX_SPEED
+      ),
+      radius: minCanvasSizeHalf - minEdgePadding,
+      centerOffset: {
+        x: maxCenterOffset,
+        y: maxCenterOffset,
+      },
+      currentSpinPosition: 0,
+    });
+    circles.push({
+      speed: tombola.rangeFloat(
+        constants.circle.MIN_SPEED,
+        constants.circle.MAX_SPEED
+      ),
+      radius: minCanvasSizeHalf - maxEdgePadding,
+      centerOffset: {
+        x: maxCenterOffset,
+        y: maxCenterOffset,
+      },
+      currentSpinPosition: 0,
+    });
+  }
 };
 
 const wrapDraw = (drawFunc: () => void) => {
@@ -126,6 +165,20 @@ const draw = (time: number) => {
     ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
   });
 
+  // Draw video.
+  switch (currentScene) {
+    case Scene.Circle: {
+      ctx.drawImage(
+        videoElements[0],
+        0,
+        0,
+        canvasElement.width,
+        canvasElement.height
+      );
+      break;
+    }
+  }
+
   // Draw dB FPS meters.
   if (constants.DEBUG) {
     wrapDraw(() => {
@@ -149,34 +202,127 @@ const draw = (time: number) => {
 
   // Draw circle.
   if (currentScene === Scene.Circle) {
-    ctx.strokeStyle = "white";
     const canvasCenter: Vector = {
       x: canvasElement.width / 2,
       y: canvasElement.height / 2,
     };
-    ctx.strokeRect(canvasCenter.x - 2, canvasCenter.y - 2, 4, 4);
     const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
-    const minRadius = minCanvasSize / 2 - constants.circle.MAX_EDGE_PADDING;
-    const maxRadius = minCanvasSize / 2 - constants.circle.MIN_EDGE_PADDING;
+    const minCanvasSizeHalf = minCanvasSize / 2;
+    const minEdgePadding =
+      constants.circle.MIN_EDGE_PADDING_PERCENT * minCanvasSize;
+    const maxEdgePadding =
+      constants.circle.MAX_EDGE_PADDING_PERCENT * minCanvasSize;
+    const maxCenterOffset =
+      constants.circle.MAX_CENTER_OFFEST_PERCENT * minCanvasSize;
+
+    const minRadius = minCanvasSizeHalf - maxEdgePadding;
+    const maxRadius = minCanvasSizeHalf - minEdgePadding;
     const midpointRadius =
-      minCanvasSize / 2 -
-      (constants.circle.MAX_EDGE_PADDING - constants.circle.MIN_EDGE_PADDING) /
-        2;
-    for (const circle of circles) {
-      let centerCircleRadius: number;
-      if (circle.radius < midpointRadius) {
-        centerCircleRadius = circle.radius - minRadius;
-      } else {
-        centerCircleRadius = maxRadius - circle.radius;
-      }
-      const circleCenter: Point = {
-        x: canvasCenter.x,
-        y: canvasCenter.y - centerCircleRadius,
+      minCanvasSizeHalf - (maxEdgePadding + minEdgePadding) / 2;
+
+    if (constants.DEBUG) {
+      ctx.strokeStyle = "blue";
+
+      // Outline of left-side vertical bars.
+      ctx.strokeRect(
+        canvasCenter.x -
+          minCanvasSizeHalf +
+          minEdgePadding -
+          maxCenterOffset * Math.SQRT2,
+        -1,
+        maxEdgePadding - minEdgePadding + 2 * maxCenterOffset * Math.SQRT2,
+        canvasElement.height + 2
+      );
+      // Outline of right-side vertical bars.
+      ctx.strokeRect(
+        canvasCenter.x +
+          minCanvasSizeHalf -
+          maxEdgePadding -
+          maxCenterOffset * Math.SQRT2,
+        -1,
+        maxEdgePadding - minEdgePadding + 2 * maxCenterOffset * Math.SQRT2,
+        canvasElement.height + 2
+      );
+      // Outline of top-side horizontal bars.
+      ctx.strokeRect(
+        -1,
+        canvasCenter.y -
+          minCanvasSizeHalf +
+          minEdgePadding -
+          maxCenterOffset * Math.SQRT2,
+        canvasElement.width + 2,
+        maxEdgePadding - minEdgePadding + 2 * maxCenterOffset * Math.SQRT2
+      );
+      // Outline of bottom-side horizontal bars.
+      ctx.strokeRect(
+        -1,
+        canvasCenter.y +
+          minCanvasSizeHalf -
+          maxEdgePadding -
+          maxCenterOffset * Math.SQRT2,
+        canvasElement.width + 2,
+        maxEdgePadding - minEdgePadding + 2 * maxCenterOffset * Math.SQRT2
+      );
+
+      // Outline of center point.
+      ctx.beginPath();
+      ctx.arc(canvasCenter.x, canvasCenter.y, 3, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      // Outline of min circle radius.
+      ctx.beginPath();
+      ctx.arc(
+        canvasCenter.x,
+        canvasCenter.y,
+        minRadius - maxCenterOffset * Math.SQRT2,
+        0,
+        2 * Math.PI
+      );
+      ctx.stroke();
+
+      // Outline of midpoint circle radius.
+      ctx.beginPath();
+      ctx.arc(canvasCenter.x, canvasCenter.y, midpointRadius, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      // Outline of max circle radius.
+      ctx.beginPath();
+      ctx.arc(
+        canvasCenter.x,
+        canvasCenter.y,
+        maxRadius + maxCenterOffset * Math.SQRT2,
+        0,
+        2 * Math.PI
+      );
+      ctx.stroke();
+    }
+
+    for (const [index, circle] of circles.entries()) {
+      const circleCenterPath: Circle = {
+        x: canvasCenter.x + circle.centerOffset.x,
+        y: canvasCenter.y + circle.centerOffset.y,
+        radius: 0,
       };
+      if (circle.radius < midpointRadius) {
+        circleCenterPath.radius = circle.radius - minRadius;
+      } else {
+        circleCenterPath.radius = maxRadius - circle.radius;
+      }
+
+      const circleCenter = getPointOnCircle(
+        circleCenterPath,
+        circle.currentSpinPosition
+      );
+
+      ctx.strokeStyle = index % 2 === 0 ? "pink" : "darkblue";
+      ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.arc(circleCenter.x, circleCenter.y, circle.radius, 0, 2 * Math.PI);
-      ctx.closePath();
       ctx.stroke();
+
+      // Update circle position.
+      circle.currentSpinPosition =
+        (circle.currentSpinPosition + circle.speed) % (2 * Math.PI);
     }
   }
 

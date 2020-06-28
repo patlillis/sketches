@@ -389,3 +389,14 @@ export function rgbaToHsla(color: RGBA): HSLA {
 
   return { h, s, l, a: color.a };
 }
+
+/**
+ * Calcualates a point on the circle, at `offset` radians (going
+ * counter-clockwise).
+ */
+export function getPointOnCircle(circle: Circle, offset: number): Point {
+  return {
+    x: circle.x + circle.radius * Math.cos(-offset),
+    y: circle.y + circle.radius * Math.sin(-offset),
+  };
+}
