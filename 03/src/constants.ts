@@ -13,9 +13,10 @@ export const ui = {
 // Circle constants.
 export const circle = {
   CIRCLE_COUNT: 15,
-  MIN_SPEED: 0.01,
-  MAX_SPEED: 0.1,
+  MIN_SPEED: 0.1,
+  MAX_SPEED: 0.3,
   MAX_CENTER_OFFEST_PCT: 0.04,
   MIN_EDGE_PADDING_PCT: 0.1,
   MAX_EDGE_PADDING_PCT: 0.3,
+  MIN_SPEED_MODIFIER: 0.04,
 };

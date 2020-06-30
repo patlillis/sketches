@@ -312,10 +312,11 @@ export function inverseLerp(
 export function remapValues(
   input: { start: number; end: number },
   output: { start: number; end: number },
-  value: number
+  value: number,
+  ease?: Ease
 ): number {
   const t = inverseLerp(input.start, input.end, value);
-  return lerp(output.start, output.end, t);
+  return lerp(output.start, output.end, t, ease);
 }
 
 function hslaToString(color: HSLA): string {
