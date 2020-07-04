@@ -1,3 +1,4 @@
+// Whether to show debugging elements.
 export const DEBUG = new URLSearchParams(window.location.search).has("debug");
 
 // Audio constants.

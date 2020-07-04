@@ -46,6 +46,6 @@ export type Color = RGBA | HSLA;
 export enum Scene {
   Title = "Title",
   Harp = "Harp",
-  Circle = "Circle",
+  Circles = "Circle",
   Phone = "Phone",
 }

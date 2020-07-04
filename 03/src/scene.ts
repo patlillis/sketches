@@ -21,7 +21,7 @@ export let ctx: CanvasRenderingContext2D;
 export let palette: Palette;
 
 let previousFrameTime: number;
-let currentScene: Scene = Scene.Circle;
+let currentScene: Scene = Scene.Harp;
 
 // Variables for Circle scene.
 const circles: {
@@ -143,16 +143,44 @@ const draw = (time: number) => {
   });
 
   // Draw video.
+  let videoBackground: HTMLVideoElement;
   switch (currentScene) {
-    case Scene.Circle: {
+    case Scene.Circles: {
+      videoBackground = videoElements[0];
+      break;
+    }
+    case Scene.Harp: {
+      videoBackground = videoElements[1];
+      break;
+    }
+  }
+  if (videoBackground != null) {
+    const videoAspectRatio =
+      videoBackground.videoWidth / videoBackground.videoHeight;
+    const screenAspectRatio = canvasElement.width / canvasElement.height;
+
+    if (videoAspectRatio > screenAspectRatio) {
+      // Video has wider aspect ratio.
+      const videoWidth = canvasElement.height * videoAspectRatio;
+      const videoX = (videoWidth - canvasElement.width) / 2;
       ctx.drawImage(
-        videoElements[0],
+        videoBackground,
+        -videoX,
         0,
-        0,
-        canvasElement.width,
+        videoWidth,
         canvasElement.height
       );
-      break;
+    } else {
+      // Screen has wider aspect ratio.
+      const videoHeight = canvasElement.width / videoAspectRatio;
+      const videoY = (videoHeight - canvasElement.height) / 2;
+      ctx.drawImage(
+        videoBackground,
+        0,
+        -videoY,
+        canvasElement.width,
+        videoHeight
+      );
     }
   }
 
@@ -178,7 +206,7 @@ const draw = (time: number) => {
   }
 
   // Draw circle.
-  if (currentScene === Scene.Circle) {
+  if (currentScene === Scene.Circles) {
     const canvasCenter: Point = {
       x: canvasElement.width / 2,
       y: canvasElement.height / 2,
@@ -379,7 +407,7 @@ const updateCircleSpeedMultiplier = (mousePosition: Point) => {
 };
 
 const onMouseMove = (mousePosition: Point) => {
-  if (currentScene === Scene.Circle) {
+  if (currentScene === Scene.Circles) {
     updateCircleSpeedMultiplier(mousePosition);
   }
 };
