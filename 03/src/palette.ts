@@ -1,11 +1,17 @@
 import { RGBA, HSLA } from "./types";
-import { rgbaToHsla } from "./utils";
+import { rgbaToHsla, colorToString } from "./utils";
 
 type Palette = {
   background: HSLA;
+  debugLines: HSLA;
+  harpBar: HSLA;
 };
 
-const loadPalette = async (imgPath: string): Promise<Palette> =>
+type PaletteStrings = { [key in keyof Palette]: string };
+
+const loadPalette = async (
+  imgPath: string
+): Promise<{ palette: Palette; paletteStrings: PaletteStrings }> =>
   new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -33,8 +39,16 @@ const loadPalette = async (imgPath: string): Promise<Palette> =>
 
       const palette: Palette = {
         background: rgbaToHsla(colors[0]),
+        debugLines: rgbaToHsla(colors[1]),
+        harpBar: rgbaToHsla(colors[2]),
       };
-      resolve(palette);
+      const paletteStrings = Object.fromEntries(
+        Object.entries(palette).map(([name, color]) => [
+          name,
+          colorToString(color),
+        ])
+      ) as PaletteStrings;
+      resolve({ palette, paletteStrings });
     };
     img.onerror = reject;
 
@@ -42,4 +56,4 @@ const loadPalette = async (imgPath: string): Promise<Palette> =>
   });
 
 export { loadPalette };
-export type { Palette };
+export type { Palette, PaletteStrings };

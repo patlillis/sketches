@@ -19,7 +19,7 @@ const onInit = async () => {
   startButton.textContent = "START";
   startButton.removeAttribute("disabled");
 
-  const requireUserInteraction = true;
+  const requireUserInteraction = false;
   if (!requireUserInteraction) {
     await onStartClicked();
   }

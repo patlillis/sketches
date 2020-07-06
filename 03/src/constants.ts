@@ -1,5 +1,10 @@
-// Whether to show debugging elements.
-export const DEBUG = new URLSearchParams(window.location.search).has("debug");
+// Debugging constants.
+const debugEnabled = new URLSearchParams(window.location.search).has("debug");
+export const DEBUG = debugEnabled;
+export const debug = {
+  enabled: debugEnabled,
+  lineWidth: 1,
+};
 
 // Audio constants.
 export const BPM = 95;
