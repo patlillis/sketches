@@ -83,8 +83,8 @@ export function getLineBetween(a: Point, b: Point): Line {
   return { slope, intercept };
 }
 
-export function getPointAlongLine(line: Line, { x }: { x: number });
-export function getPointAlongLine(line: Line, { y }: { y: number });
+export function getPointAlongLine(line: Line, { x }: { x: number }): Point;
+export function getPointAlongLine(line: Line, { y }: { y: number }): Point;
 
 export function getPointAlongLine(
   line: Line,

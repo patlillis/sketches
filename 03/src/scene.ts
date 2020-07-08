@@ -8,6 +8,8 @@ import {
   lerp,
   inverseLerp,
   getDistance,
+  getPointAlongLine,
+  getLineBetween,
 } from "./utils";
 import { Point, Scene, Vector, Circle, Bounds } from "./types";
 import { meter } from "./audio";
@@ -153,6 +155,14 @@ const draw = (time: number) => {
     ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
   });
 
+  // Canvas sizes/points that are used in multiple scenes.
+  const canvasCenter: Point = {
+    x: canvasElement.width / 2,
+    y: canvasElement.height / 2,
+  };
+  const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
+  const units = (multiplier: number) => minCanvasSize * multiplier;
+
   // Draw video.
   let videoBackground: HTMLVideoElement;
   switch (currentScene) {
@@ -195,9 +205,9 @@ const draw = (time: number) => {
     }
   }
 
-  // Draw dB FPS meters.
   if (constants.DEBUG) {
     wrapDraw(() => {
+      // Draw dB and FPS meters.
       const level = meter.getValue();
       ctx.font = "16px sans-serif";
       ctx.fillStyle = "white";
@@ -213,16 +223,18 @@ const draw = (time: number) => {
           constants.ui.PADDING + 24
         );
       }
+
+      // Draw outline of min screen size.
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        canvasCenter.x - units(0.5),
+        canvasCenter.y - units(0.5),
+        units(1),
+        units(1)
+      );
     });
   }
-
-  // Canvas sizes/points that are used in multiple scenes.
-  const canvasCenter: Point = {
-    x: canvasElement.width / 2,
-    y: canvasElement.height / 2,
-  };
-  const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
-  const units = (multiplier: number) => minCanvasSize * multiplier;
 
   // Draw circles.
   switch (currentScene) {
@@ -353,7 +365,7 @@ const draw = (time: number) => {
           );
 
           ctx.strokeStyle = index % 2 === 0 ? "pink" : "darkblue";
-          ctx.lineWidth = 5;
+          ctx.lineWidth = units(0.007);
           ctx.beginPath();
           ctx.arc(
             circleCenter.x,
@@ -381,6 +393,46 @@ const draw = (time: number) => {
           left: canvasCenter.x - units(7 / 16),
         };
 
+        const stringBounds: Bounds = {
+          top: harpBounds.top + units(0.1),
+          right: harpBounds.right - units(0.05),
+          bottom: harpBounds.bottom,
+          left: harpBounds.left + units(0.05),
+        };
+
+        const stringCount = 8;
+        const stringBoundsWidth = stringBounds.right - stringBounds.left;
+        const stringBoundsHeight = stringBounds.bottom - stringBounds.top;
+        const distanceBetweenStrings = stringBoundsWidth / stringCount;
+
+        const pLeft: Point = {
+          x: stringBounds.left,
+          y: stringBounds.top + stringBoundsHeight * 0.1,
+        };
+        const pCenter: Point = {
+          x: canvasCenter.x,
+          y: stringBounds.top + stringBoundsHeight * 0.8,
+        };
+        const pRight: Point = {
+          x: stringBounds.right,
+          y: stringBounds.bottom,
+        };
+        const leftLine = getLineBetween(pLeft, pCenter);
+        const rightLine = getLineBetween(pCenter, pRight);
+
+        const stringBottoms: Point[] = Array.from({
+          length: stringCount,
+        }).map((_, index) => {
+          const x =
+            stringBounds.left +
+            distanceBetweenStrings / 2 +
+            index * distanceBetweenStrings;
+
+          return index < stringCount / 2
+            ? getPointAlongLine(leftLine, { x })
+            : getPointAlongLine(rightLine, { x });
+        });
+
         if (constants.DEBUG) {
           ctx.strokeStyle = paletteStrings.debugLines;
           ctx.lineWidth = constants.debug.lineWidth;
@@ -400,17 +452,50 @@ const draw = (time: number) => {
           ctx.moveTo(harpBounds.left, -1);
           ctx.lineTo(harpBounds.left, canvasElement.height + 1);
           ctx.stroke();
+
+          // Outline of where strings should go.
+          ctx.beginPath();
+          // Top.
+          ctx.moveTo(-1, stringBounds.top);
+          ctx.lineTo(canvasElement.width + 1, stringBounds.top);
+          // Right.
+          ctx.moveTo(stringBounds.right, -1);
+          ctx.lineTo(stringBounds.right, canvasElement.height + 1);
+          // Bottom.
+          ctx.moveTo(-1, stringBounds.bottom);
+          ctx.lineTo(canvasElement.width + 1, stringBounds.bottom);
+          // Left.
+          ctx.moveTo(stringBounds.left, -1);
+          ctx.lineTo(stringBounds.left, canvasElement.height + 1);
+          ctx.stroke();
+
+          // Line of string bottom cut-off.
+          ctx.beginPath();
+          ctx.moveTo(pLeft.x, pLeft.y);
+          ctx.lineTo(pCenter.x, pCenter.y);
+          ctx.lineTo(pRight.x, pRight.y);
+          ctx.stroke();
         }
 
         // Harp bar.
         ctx.fillStyle = "darkblue";
         ctx.beginPath();
         ctx.moveTo(harpBounds.left, harpBounds.top);
-        ctx.lineTo(harpBounds.right - units(0.05), harpBounds.top);
-        ctx.lineTo(harpBounds.right, harpBounds.top + units(0.1));
-        ctx.lineTo(harpBounds.left + units(0.05), harpBounds.top + units(0.1));
+        ctx.lineTo(stringBounds.right, harpBounds.top);
+        ctx.lineTo(harpBounds.right, stringBounds.top);
+        ctx.lineTo(stringBounds.left, stringBounds.top);
         ctx.closePath();
         ctx.fill();
+
+        // Draw strings.
+        ctx.strokeStyle = "pink";
+        ctx.lineWidth = units(0.007);
+        for (const stringBottom of stringBottoms) {
+          ctx.beginPath();
+          ctx.moveTo(stringBottom.x, stringBounds.top);
+          ctx.lineTo(stringBottom.x, stringBottom.y);
+          ctx.stroke();
+        }
       }
       break;
     default:
