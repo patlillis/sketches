@@ -22,7 +22,7 @@ export let palette: Palette;
 export let paletteStrings: PaletteStrings;
 
 let previousFrameTime: number;
-let currentScene: Scene;
+let currentScene = Scene.Title;
 
 // Variables for Circle scene.
 const circles: {
@@ -222,6 +222,7 @@ const draw = (time: number) => {
     y: canvasElement.height / 2,
   };
   const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
+  const units = (multiplier: number) => minCanvasSize * multiplier;
 
   // Draw circles.
   switch (currentScene) {
@@ -242,74 +243,54 @@ const draw = (time: number) => {
           // Outline of left-side vertical bars.
           ctx.strokeRect(
             canvasCenter.x -
-              minCanvasSize * maxRadius -
-              minCanvasSize *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+              units(maxRadius) -
+              units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             -1,
-            minCanvasSize *
-              ((constants.circle.MAX_EDGE_PADDING_PCT +
+            units(
+              (constants.circle.MAX_EDGE_PADDING_PCT +
                 constants.circle.MIN_EDGE_PADDING_PCT) /
-                2) +
-              minCanvasSize *
-                2 *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+                2
+            ) + units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             canvasElement.height + 2
           );
           // Outline of right-side vertical bars.
           ctx.strokeRect(
             canvasCenter.x +
-              minCanvasSize * maxRadius +
-              minCanvasSize *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+              units(maxRadius) +
+              units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             -1,
-            -minCanvasSize *
-              ((constants.circle.MAX_EDGE_PADDING_PCT +
+            -units(
+              (constants.circle.MAX_EDGE_PADDING_PCT +
                 constants.circle.MIN_EDGE_PADDING_PCT) /
-                2) +
-              -minCanvasSize *
-                2 *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+                2
+            ) + -units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             canvasElement.height + 2
           );
           // Outline of top-side horizontal bars.
           ctx.strokeRect(
             -1,
             canvasCenter.y -
-              minCanvasSize * maxRadius -
-              minCanvasSize *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+              units(maxRadius) -
+              units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             canvasElement.width + 2,
-            minCanvasSize *
-              ((constants.circle.MAX_EDGE_PADDING_PCT +
+            units(
+              (constants.circle.MAX_EDGE_PADDING_PCT +
                 constants.circle.MIN_EDGE_PADDING_PCT) /
-                2) +
-              minCanvasSize *
-                2 *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2
+                2
+            ) + units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2)
           );
           // Outline of bottom-side horizontal bars.
           ctx.strokeRect(
             -1,
             canvasCenter.y +
-              minCanvasSize * maxRadius +
-              minCanvasSize *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+              units(maxRadius) +
+              units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             canvasElement.width + 2,
-            -minCanvasSize *
-              ((constants.circle.MAX_EDGE_PADDING_PCT +
+            -units(
+              (constants.circle.MAX_EDGE_PADDING_PCT +
                 constants.circle.MIN_EDGE_PADDING_PCT) /
-                2) +
-              -minCanvasSize *
-                2 *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2
+                2
+            ) + -units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2)
           );
 
           // Outline of center point.
@@ -322,10 +303,8 @@ const draw = (time: number) => {
           ctx.arc(
             canvasCenter.x,
             canvasCenter.y,
-            minCanvasSize * minRadius -
-              minCanvasSize *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+            units(minRadius) -
+              units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             0,
             2 * Math.PI
           );
@@ -336,7 +315,7 @@ const draw = (time: number) => {
           ctx.arc(
             canvasCenter.x,
             canvasCenter.y,
-            minCanvasSize * midpointRadius,
+            units(midpointRadius),
             0,
             2 * Math.PI
           );
@@ -347,28 +326,25 @@ const draw = (time: number) => {
           ctx.arc(
             canvasCenter.x,
             canvasCenter.y,
-            minCanvasSize * maxRadius +
-              minCanvasSize *
-                constants.circle.MAX_CENTER_OFFEST_PCT *
-                Math.SQRT2,
+            units(maxRadius) +
+              units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
             0,
             2 * Math.PI
           );
           ctx.stroke();
         }
 
+        // Draw each circle.
         for (const [index, circle] of circles.entries()) {
           const circleCenterPath: Circle = {
-            x: canvasCenter.x + circle.centerOffset.x * minCanvasSize,
-            y: canvasCenter.y + circle.centerOffset.y * minCanvasSize,
+            x: canvasCenter.x + units(circle.centerOffset.x),
+            y: canvasCenter.y + units(circle.centerOffset.y),
             radius: 0,
           };
           if (circle.radius < midpointRadius) {
-            circleCenterPath.radius =
-              minCanvasSize * (circle.radius - minRadius);
+            circleCenterPath.radius = units(circle.radius - minRadius);
           } else {
-            circleCenterPath.radius =
-              minCanvasSize * (maxRadius - circle.radius);
+            circleCenterPath.radius = units(maxRadius - circle.radius);
           }
 
           const circleCenter = getPointOnCircle(
@@ -382,7 +358,7 @@ const draw = (time: number) => {
           ctx.arc(
             circleCenter.x,
             circleCenter.y,
-            minCanvasSize * circle.radius,
+            units(circle.radius),
             0,
             2 * Math.PI
           );
@@ -399,10 +375,10 @@ const draw = (time: number) => {
     case Scene.Harp:
       {
         const harpBounds: Bounds = {
-          top: canvasCenter.y - minCanvasSize / 4,
-          right: canvasCenter.x + (minCanvasSize * 7) / 16,
-          bottom: canvasCenter.y + minCanvasSize / 4,
-          left: canvasCenter.x - (minCanvasSize * 7) / 16,
+          top: canvasCenter.y - units(1 / 4),
+          right: canvasCenter.x + units(7 / 16),
+          bottom: canvasCenter.y + units(1 / 4),
+          left: canvasCenter.x - units(7 / 16),
         };
 
         if (constants.DEBUG) {
@@ -428,12 +404,13 @@ const draw = (time: number) => {
 
         // Harp bar.
         ctx.fillStyle = "darkblue";
-        ctx.fillRect(
-          harpBounds.left,
-          harpBounds.top,
-          harpBounds.right - harpBounds.left,
-          minCanvasSize / 10
-        );
+        ctx.beginPath();
+        ctx.moveTo(harpBounds.left, harpBounds.top);
+        ctx.lineTo(harpBounds.right - units(0.05), harpBounds.top);
+        ctx.lineTo(harpBounds.right, harpBounds.top + units(0.1));
+        ctx.lineTo(harpBounds.left + units(0.05), harpBounds.top + units(0.1));
+        ctx.closePath();
+        ctx.fill();
       }
       break;
     default:
