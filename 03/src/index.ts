@@ -1,9 +1,17 @@
 import { initScene, startScene, resizeScene } from "./scene";
 import { initAudio, startAudio } from "./audio";
+import { Scene } from "./types";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-const video0 = document.getElementById("video0") as HTMLVideoElement;
-const video1 = document.getElementById("video1") as HTMLVideoElement;
+const videos: { [scene in Scene]?: HTMLVideoElement } = {
+  [Scene.Circles]: document.getElementById("video0") as HTMLVideoElement,
+  [Scene.Harp]: document.getElementById("video1") as HTMLVideoElement,
+  [Scene.Blocks]: document.getElementById("video2") as HTMLVideoElement,
+};
+const videosLoadedPromises = Object.values(videos).map(
+  (video) =>
+    new Promise((resolve) => video.addEventListener("canplaythrough", resolve))
+);
 const startButton = document.getElementById("start");
 const startButtonWrapper = document.getElementById("start-wrapper");
 
@@ -13,13 +21,18 @@ let isStarted = false;
 const onInit = async () => {
   startButton.textContent = "LOADING...";
 
-  const videos = [video0, video1];
-  await Promise.all([initScene(canvas, videos), initAudio(videos)]);
+  // Wait for loading and setup.
+  await Promise.all([
+    ...videosLoadedPromises,
+    initScene(canvas, videos),
+    initAudio(videos),
+  ]);
 
+  // Allow starting scene.
   startButton.textContent = "START";
   startButton.removeAttribute("disabled");
 
-  const requireUserInteraction = false;
+  const requireUserInteraction = true;
   if (!requireUserInteraction) {
     await onStartClicked();
   }

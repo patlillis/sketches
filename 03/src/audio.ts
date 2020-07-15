@@ -3,6 +3,7 @@ import * as Tone from "tone";
 import * as constants from "./constants";
 import { Beat, Scene } from "./types";
 import { toBeat } from "./utils";
+import { currentScene } from "./scene";
 
 let pianoPlayers: { [note: string]: Tone.Player } = {};
 let pianoArpPlayer: Tone.Player;
@@ -28,7 +29,7 @@ master.chain(meter, Tone.Destination);
 /** These are the controls exposed to other components to tweak/tween. */
 export const periodischVolume = new Tone.Volume(-100);
 export const pianoArpVolume = new Tone.Volume(-100);
-export const videoVolumes: Tone.Volume[] = [];
+export const videoVolumes: { [key in Scene]?: Tone.Volume } = {};
 export const startPlayingObertonreich = (note: string) => {
   const { envelope } = obertonreichPlayers[note];
   envelope.triggerAttack();
@@ -36,6 +37,12 @@ export const startPlayingObertonreich = (note: string) => {
 export const stopPlayingObertonreich = (note: string) => {
   const { envelope } = obertonreichPlayers[note];
   envelope.triggerRelease();
+};
+export const transitionScene = (previousScene: Scene, newScene: Scene) => {
+  const oldVolume = videoVolumes[previousScene]?.volume;
+  const newVolume = videoVolumes[newScene]?.volume;
+  if (oldVolume != null) oldVolume.value = -100;
+  if (newVolume != null) newVolume.value = 10;
 };
 export { meter };
 
@@ -46,7 +53,9 @@ declare global {
   }
 }
 
-export const initAudio = async (videoElements: HTMLVideoElement[]) => {
+export const initAudio = async (
+  videos: { [scene in Scene]?: HTMLVideoElement }
+) => {
   // This is a little weird, but this basically makes it 6/8 time in our desired
   // BPM (it's actually 6/4 at twice our BPM).
   Tone.Transport.bpm.value = constants.BPM * 2;
@@ -146,10 +155,11 @@ export const initAudio = async (videoElements: HTMLVideoElement[]) => {
   }
 
   // Hook up video audio through Tone.js
-  for (const video of videoElements) {
-    const videoVolume = new Tone.Volume(-100);
+  for (const [scene, video] of Object.entries(videos)) {
+    const initialVolume = currentScene === scene ? 10 : -100;
+    const videoVolume = new Tone.Volume(initialVolume);
     videoVolume.connect(master);
-    videoVolumes.push(videoVolume);
+    videoVolumes[scene] = videoVolume;
     const context = Tone.context.rawContext as AudioContext;
     const videoSource = context.createMediaElementSource(video);
     Tone.connect(videoSource, videoVolume);

@@ -47,6 +47,10 @@ export function toBeat(barsBeatsSixteenths: string): Beat {
   };
 }
 
+export function add(a: Vector, b: Point): Point {
+  return { x: a.x + b.x, y: a.y + b.y };
+}
+
 export function getIntersection(a: Block, b: Block): Block {
   const aMin: Point = { x: a.x, y: a.y };
   const aMax: Point = { x: a.x + a.width, y: a.y + a.height };
@@ -182,58 +186,6 @@ export function enclosedIn(a: any, b: any): boolean {
   if (aPoint.y > bBlock.y + bBlock.height) return false;
   return true;
 }
-
-/**
- * Get the video index corresponding to the given scene.
- *
- * Returns `-1` if the given scene has no corresponding video.
- */
-// export function getVideoIndexForScene(scene: Scene) {
-//   switch (scene) {
-//     case Scene.Video0:
-//       return 0;
-//     case Scene.Video1:
-//       return 1;
-//     case Scene.Video2:
-//       return 2;
-//     default:
-//       return -1;
-//   }
-// }
-
-/**
- * Calculates the final background transform for the given video.
- */
-export const calculateTransformForVideo = (
-  videoBounds: Block,
-  screenBounds: Block
-): { x: number; y: number; scale: number } => {
-  const screenAspectRatio = screenBounds.width / screenBounds.height;
-  const videoAspectRatio = videoBounds.width / videoBounds.height;
-
-  const widthRatio = screenBounds.width / videoBounds.width;
-  const heightRatio = screenBounds.height / videoBounds.height;
-
-  if (screenAspectRatio < videoAspectRatio) {
-    // Spill horizontally.
-    const newScreenWidth = screenAspectRatio * videoBounds.height;
-    const spillPerSide = (videoBounds.width - newScreenWidth) / 2;
-
-    const scale = heightRatio;
-    const x = scale * -(videoBounds.x + spillPerSide);
-    const y = scale * -videoBounds.y;
-    return { x, y, scale };
-  } else {
-    // Spill vertically.
-    const newScreenHeight = videoBounds.width / screenAspectRatio;
-    const spillPerSide = (videoBounds.height - newScreenHeight) / 2;
-
-    const scale = widthRatio;
-    const x = scale * -videoBounds.x;
-    const y = scale * -(videoBounds.y + spillPerSide);
-    return { x, y, scale };
-  }
-};
 
 const lerpNumber = (start: number, end: number, t: number): number =>
   (1 - t) * start + t * end;
