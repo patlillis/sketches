@@ -9,7 +9,7 @@ import {
   getLineBetween,
   add,
 } from "./utils";
-import { Point, Scene, Vector, Circle, Bounds } from "./types";
+import { Point, Scene, Vector, Circle, Bounds, Block } from "./types";
 import { meter, transitionScene } from "./audio";
 import { Palette, loadPalette, PaletteStrings } from "./palette";
 import { resizeParams } from "./params";
@@ -483,75 +483,44 @@ const draw = (time: number) => {
       break;
     }
     case Scene.Blocks: {
-      const hexagonPath = (leftPoint: Point, sideLength: number) => {
-        const height = sideLength * Math.sqrt(3);
-        const width = sideLength * 2;
+      const topBlocksCenterLine = canvasCenter.y - units(1 / 4);
+      const bottomBlocksCenterLine = canvasCenter.y + units(1 / 4);
+
+      if (constants.DEBUG) {
+        ctx.strokeStyle = paletteStrings.debugLines;
+        ctx.lineWidth = constants.debug.lineWidth;
+
         ctx.beginPath();
-        ctx.moveTo(leftPoint.x, leftPoint.y);
-        ctx.lineTo(leftPoint.x + sideLength / 2, leftPoint.y - height / 2);
-        ctx.lineTo(
-          leftPoint.x + sideLength * (3 / 2),
-          leftPoint.y - height / 2
+        ctx.moveTo(-1, topBlocksCenterLine);
+        ctx.lineTo(canvasElement.width + 1, topBlocksCenterLine);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-1, bottomBlocksCenterLine);
+        ctx.lineTo(canvasElement.width + 1, bottomBlocksCenterLine);
+        ctx.stroke();
+      }
+
+      // Draw top blocks
+      ctx.strokeStyle = "darkblue";
+      ctx.lineWidth = units(0.005);
+      const topBlocks: Bounds[] = [
+        {
+          top: topBlocksCenterLine - units(1 / 20),
+          bottom: topBlocksCenterLine + units(1 / 20),
+          left: canvasCenter.x + units(1 / 6),
+          right: canvasCenter.x + units(1 / 6 + 1 / 10),
+        },
+      ];
+
+      for (const block of topBlocks) {
+        ctx.strokeRect(
+          block.left,
+          block.top,
+          block.right - block.left,
+          block.bottom - block.top
         );
-        ctx.lineTo(leftPoint.x + width, leftPoint.y);
-        ctx.lineTo(
-          leftPoint.x + sideLength * (3 / 2),
-          leftPoint.y + height / 2
-        );
-        ctx.lineTo(leftPoint.x + sideLength / 2, leftPoint.y + height / 2);
-        ctx.closePath();
-      };
-
-      ctx.strokeStyle = "red";
-
-      const sideLength = 50;
-      const height = sideLength * Math.sqrt(3);
-      const width = sideLength * 2;
-
-      // Draw hex1
-      const hex1LeftPoint = add(canvasCenter, { x: -100, y: 50 });
-      hexagonPath(hex1LeftPoint, sideLength);
-      ctx.stroke();
-
-      // Draw hex2
-      const hex2LeftPoint = add(hex1LeftPoint, {
-        x: (width * 3) / 4,
-        y: -height / 2,
-      });
-      hexagonPath(hex2LeftPoint, sideLength);
-      ctx.stroke();
-
-      // Draw diamond
-      const bigSide = sideLength * (Math.sqrt(3) / 2);
-      const smallSide = sideLength * (1 / 2);
-      const diamondLeftPoint = add(hex2LeftPoint, {
-        x: (width * 3) / 4,
-        y: -height / 2,
-      });
-      ctx.beginPath();
-      ctx.moveTo(diamondLeftPoint.x, diamondLeftPoint.y);
-      ctx.lineTo(diamondLeftPoint.x + bigSide, diamondLeftPoint.y - smallSide);
-      ctx.lineTo(
-        diamondLeftPoint.x + bigSide + smallSide,
-        diamondLeftPoint.y + bigSide - smallSide
-      );
-      ctx.lineTo(diamondLeftPoint.x + smallSide, diamondLeftPoint.y + bigSide);
-      ctx.closePath();
-      ctx.stroke();
-
-      // Draw hex 3
-      const hex3LeftPoint = add(diamondLeftPoint, {
-        x: bigSide,
-        y: -smallSide,
-      });
-      hexagonPath(hex3LeftPoint, sideLength);
-      ctx.stroke();
-
-      // Draw hex 4
-      const hex4LeftPoint = add(hex3LeftPoint, { x: 0, y: -2 * bigSide });
-      hexagonPath(hex4LeftPoint, sideLength);
-      ctx.stroke();
-
+      }
       break;
     }
     default:
