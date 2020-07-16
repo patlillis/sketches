@@ -217,8 +217,8 @@ const draw = (time: number) => {
       ctx.strokeRect(
         canvasCenter.x - units(0.5),
         canvasCenter.y - units(0.5),
-        units(1),
-        units(1)
+        units(1.0),
+        units(1.0)
       );
     });
   }
@@ -371,10 +371,10 @@ const draw = (time: number) => {
     }
     case Scene.Harp: {
       const harpBounds: Bounds = {
-        top: canvasCenter.y - units(1 / 4),
-        right: canvasCenter.x + units(7 / 16),
-        bottom: canvasCenter.y + units(1 / 4),
-        left: canvasCenter.x - units(7 / 16),
+        top: canvasCenter.y - units(0.25),
+        right: canvasCenter.x + units(0.4375),
+        bottom: canvasCenter.y + units(0.25),
+        left: canvasCenter.x - units(0.4375),
       };
 
       const stringBounds: Bounds = {
@@ -483,8 +483,8 @@ const draw = (time: number) => {
       break;
     }
     case Scene.Blocks: {
-      const topBlocksCenterLine = canvasCenter.y - units(1 / 4);
-      const bottomBlocksCenterLine = canvasCenter.y + units(1 / 4);
+      const topBlocksCenterLine = canvasCenter.y - units(0.25);
+      const bottomBlocksCenterLine = canvasCenter.y + units(0.25);
 
       if (constants.DEBUG) {
         ctx.strokeStyle = paletteStrings.debugLines;
@@ -506,10 +506,10 @@ const draw = (time: number) => {
       ctx.lineWidth = units(0.005);
       const topBlocks: Bounds[] = [
         {
-          top: topBlocksCenterLine - units(1 / 20),
-          bottom: topBlocksCenterLine + units(1 / 20),
-          left: canvasCenter.x + units(1 / 6),
-          right: canvasCenter.x + units(1 / 6 + 1 / 10),
+          top: topBlocksCenterLine - units(0.05),
+          bottom: topBlocksCenterLine + units(0.05),
+          left: canvasCenter.x + units(0.1666),
+          right: canvasCenter.x + units(0.2666),
         },
       ];
 
