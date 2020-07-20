@@ -9,8 +9,10 @@ import {
   getLineBetween,
   buildUnitFuntions,
   getRect,
+  clamp,
+  lerp,
 } from "./utils";
-import { Point, Scene, Vector, Bounds } from "./types";
+import { Point, Scene, Vector, Bounds, Rect } from "./types";
 import { meter, transitionScene } from "./audio";
 import { Palette, loadPalette, PaletteStrings } from "./palette";
 import { resizeParams } from "./params";
@@ -59,7 +61,28 @@ const circles: {
     currentSpinPosition: tombola.rangeFloat(0, 2 * Math.PI),
   };
 });
+// This is controlled by the mouse position.
 let circleSpeedMultiplier = constants.circle.MIN_SPEED_MODIFIER;
+
+const blockDefinitions: Rect[] = [
+  // Top blocks.
+  { x: 0.5, y: 0.2, width: 0.1, height: 0.1 },
+  { x: 0.6, y: 0.2, width: 0.1, height: 0.1 },
+  { x: 0.7, y: 0.2, width: 0.1, height: 0.1 },
+  { x: 0.8, y: 0.2, width: 0.1, height: 0.1 },
+  { x: 0.9, y: 0.2, width: 0.1, height: 0.1 },
+
+  // Bottom blocks.
+  { x: 0.28, y: 0.7, width: 0.1, height: 0.12 },
+  { x: 0.2, y: 0.72, width: 0.1, height: 0.07 },
+  { x: 0.1, y: 0.69, width: 0.1, height: 0.11 },
+];
+const blocks = blockDefinitions.map((position) => ({
+  position,
+  swaySpeed: tombola.rangeFloat(0.001, 0.005),
+  swayDirection: tombola.item([-1.0, +1.0]),
+  swayOffset: tombola.rangeFloat(0, 1.0),
+}));
 
 declare global {
   interface Window {
@@ -552,69 +575,41 @@ const draw = (time: number) => {
         ctx.stroke();
       }
 
-      // Draw top blocks
+      // Draw blocks
       ctx.strokeStyle = "darkblue";
       ctx.lineWidth = unit(0.005);
       ctx.fillStyle = "pink";
-      const topBlocks = [
-        unitRect({
-          x: 0.5,
-          y: 0.2,
-          width: 0.1,
-          height: 0.1,
-        }),
-        unitRect({
-          x: 0.6,
-          y: 0.2,
-          width: 0.1,
-          height: 0.1,
-        }),
-        unitRect({
-          x: 0.7,
-          y: 0.2,
-          width: 0.1,
-          height: 0.1,
-        }),
-        unitRect({
-          x: 0.8,
-          y: 0.2,
-          width: 0.1,
-          height: 0.1,
-        }),
-        unitRect({
-          x: 0.9,
-          y: 0.2,
-          width: 0.1,
-          height: 0.1,
-        }),
-      ];
 
-      const bottomBlocks = [
-        unitRect({
-          x: 0.1,
-          y: 0.7,
-          width: 0.1,
-          height: 0.1,
-        }),
-        unitRect({
-          x: 0.2,
-          y: 0.7,
-          width: 0.1,
-          height: 0.1,
-        }),
-        unitRect({
-          x: 0.3,
-          y: 0.7,
-          width: 0.1,
-          height: 0.1,
-        }),
-      ];
+      for (const block of blocks) {
+        const swayOffset = lerp(
+          -constants.block.MAX_SWAY,
+          constants.block.MAX_SWAY,
+          block.swayOffset,
+          Ease.cubicInOut
+        );
 
-      for (const block of [...topBlocks, ...bottomBlocks]) {
+        const actualBlockPosition = unitRect({
+          ...block.position,
+          y: block.position.y + swayOffset,
+        });
         ctx.beginPath();
-        ctx.rect(block.x, block.y, block.width, block.height);
+        ctx.rect(
+          actualBlockPosition.x,
+          actualBlockPosition.y,
+          actualBlockPosition.width,
+          actualBlockPosition.height
+        );
         ctx.stroke();
         ctx.fill();
+      }
+
+      // Update bob & sway.
+      for (const block of blocks) {
+        block.swayOffset += block.swayDirection * block.swaySpeed;
+        if (block.swayOffset >= 1 || block.swayOffset <= 0) {
+          block.swayDirection = -block.swayDirection;
+        }
+        block.swayOffset = clamp(block.swayOffset, 0, 1);
       }
       break;
     }

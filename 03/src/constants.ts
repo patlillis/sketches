@@ -26,3 +26,8 @@ export const circle = {
   MAX_EDGE_PADDING_PCT: 0.3,
   MIN_SPEED_MODIFIER: 0.04,
 };
+
+// Block constants.
+export const block = {
+  MAX_SWAY: 0.004,
+};
