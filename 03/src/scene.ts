@@ -7,9 +7,10 @@ import {
   getDistance,
   getPointAlongLine,
   getLineBetween,
-  add,
+  buildUnitFuntions,
+  getRect,
 } from "./utils";
-import { Point, Scene, Vector, Circle, Bounds, Block } from "./types";
+import { Point, Scene, Vector, Bounds } from "./types";
 import { meter, transitionScene } from "./audio";
 import { Palette, loadPalette, PaletteStrings } from "./palette";
 import { resizeParams } from "./params";
@@ -158,7 +159,14 @@ const draw = (time: number) => {
     y: canvasElement.height / 2,
   };
   const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
-  const units = (multiplier: number) => minCanvasSize * multiplier;
+
+  const {
+    unit,
+    unitPoint,
+    unitRect,
+    unitBounds,
+    unitCircle,
+  } = buildUnitFuntions(minCanvasSize, canvasCenter);
 
   // Draw video.
   let videoBackground = videoElements[currentScene];
@@ -210,16 +218,45 @@ const draw = (time: number) => {
           constants.ui.PADDING + 24
         );
       }
+    });
 
+    wrapDraw(() => {
       // Draw outline of min screen size.
       ctx.strokeStyle = "white";
+      ctx.lineWidth = 3;
+      const rect = unitRect({ x: 0, y: 0, width: 1.0, height: 1.0 });
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    });
+
+    wrapDraw(() => {
+      // Draw unit intervals.
       ctx.lineWidth = 1;
-      ctx.strokeRect(
-        canvasCenter.x - units(0.5),
-        canvasCenter.y - units(0.5),
-        units(1.0),
-        units(1.0)
-      );
+      for (let i = 0; i < 1.0; i += 0.1) {
+        ctx.setLineDash(i === 0.5 ? [] : [5, 5]);
+        ctx.strokeStyle = i === 0.5 ? "white" : "rgba(255, 255, 255, 0.5)";
+
+        // Draw horizontal line.
+        ctx.beginPath();
+
+        const horizontalStart = unitPoint({ x: 0.0, y: i });
+        ctx.moveTo(horizontalStart.x, horizontalStart.y);
+
+        const horizontalEnd = unitPoint({ x: 1.0, y: i });
+        ctx.lineTo(horizontalEnd.x, horizontalEnd.y);
+
+        ctx.stroke();
+
+        // Draw Vertical line.
+        ctx.beginPath();
+
+        const verticalStart = unitPoint({ x: i, y: 0.0 });
+        ctx.moveTo(verticalStart.x, verticalStart.y);
+
+        const verticalEnd = unitPoint({ x: i, y: 1.0 });
+        ctx.lineTo(verticalEnd.x, verticalEnd.y);
+
+        ctx.stroke();
+      }
     });
   }
 
@@ -238,57 +275,65 @@ const draw = (time: number) => {
         ctx.strokeStyle = paletteStrings.debugLines;
         ctx.lineWidth = constants.debug.lineWidth;
 
-        // Outline of left-side vertical bars.
+        const actualMinRadius =
+          minRadius - constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2;
+        const actualMaxRadius =
+          maxRadius + constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2;
+
+        // Outline of max radius vertical bars.
+        const maxVerticalRect = unitRect({
+          x: 0.5 - actualMaxRadius,
+          y: -1,
+          width: 2 * actualMaxRadius,
+          height: canvasElement.height + 2,
+        });
         ctx.strokeRect(
-          canvasCenter.x -
-            units(maxRadius) -
-            units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
-          -1,
-          units(
-            (constants.circle.MAX_EDGE_PADDING_PCT +
-              constants.circle.MIN_EDGE_PADDING_PCT) /
-              2
-          ) + units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
-          canvasElement.height + 2
+          maxVerticalRect.x,
+          maxVerticalRect.y,
+          maxVerticalRect.width,
+          maxVerticalRect.height
         );
-        // Outline of right-side vertical bars.
+
+        // Outline of min radius vertical bars.
+        const minVerticalRect = unitRect({
+          x: 0.5 - actualMinRadius,
+          y: -1,
+          width: 2 * actualMinRadius,
+          height: canvasElement.height + 2,
+        });
         ctx.strokeRect(
-          canvasCenter.x +
-            units(maxRadius) +
-            units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
-          -1,
-          -units(
-            (constants.circle.MAX_EDGE_PADDING_PCT +
-              constants.circle.MIN_EDGE_PADDING_PCT) /
-              2
-          ) + -units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
-          canvasElement.height + 2
+          minVerticalRect.x,
+          minVerticalRect.y,
+          minVerticalRect.width,
+          minVerticalRect.height
         );
-        // Outline of top-side horizontal bars.
+
+        // Outline of max radius horizontal bars.
+        const maxHorizontalRect = unitRect({
+          x: -1,
+          y: 0.5 - actualMaxRadius,
+          width: canvasElement.width + 2,
+          height: 2 * actualMaxRadius,
+        });
         ctx.strokeRect(
-          -1,
-          canvasCenter.y -
-            units(maxRadius) -
-            units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
-          canvasElement.width + 2,
-          units(
-            (constants.circle.MAX_EDGE_PADDING_PCT +
-              constants.circle.MIN_EDGE_PADDING_PCT) /
-              2
-          ) + units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2)
+          maxHorizontalRect.x,
+          maxHorizontalRect.y,
+          maxHorizontalRect.width,
+          maxHorizontalRect.height
         );
-        // Outline of bottom-side horizontal bars.
+
+        // Outline of min radius horizontal bars.
+        const minHorizontalRect = unitRect({
+          x: -1,
+          y: 0.5 - actualMinRadius,
+          width: canvasElement.width + 2,
+          height: 2 * actualMinRadius,
+        });
         ctx.strokeRect(
-          -1,
-          canvasCenter.y +
-            units(maxRadius) +
-            units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
-          canvasElement.width + 2,
-          -units(
-            (constants.circle.MAX_EDGE_PADDING_PCT +
-              constants.circle.MIN_EDGE_PADDING_PCT) /
-              2
-          ) + -units(2 * constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2)
+          minHorizontalRect.x,
+          minHorizontalRect.y,
+          minHorizontalRect.width,
+          minHorizontalRect.height
         );
 
         // Outline of center point.
@@ -301,8 +346,7 @@ const draw = (time: number) => {
         ctx.arc(
           canvasCenter.x,
           canvasCenter.y,
-          units(minRadius) -
-            units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
+          unit(actualMinRadius),
           0,
           2 * Math.PI
         );
@@ -313,7 +357,7 @@ const draw = (time: number) => {
         ctx.arc(
           canvasCenter.x,
           canvasCenter.y,
-          units(midpointRadius),
+          unit(midpointRadius),
           0,
           2 * Math.PI
         );
@@ -324,8 +368,7 @@ const draw = (time: number) => {
         ctx.arc(
           canvasCenter.x,
           canvasCenter.y,
-          units(maxRadius) +
-            units(constants.circle.MAX_CENTER_OFFEST_PCT * Math.SQRT2),
+          unit(actualMaxRadius),
           0,
           2 * Math.PI
         );
@@ -334,16 +377,15 @@ const draw = (time: number) => {
 
       // Draw each circle.
       for (const [index, circle] of circles.entries()) {
-        const circleCenterPath: Circle = {
-          x: canvasCenter.x + units(circle.centerOffset.x),
-          y: canvasCenter.y + units(circle.centerOffset.y),
-          radius: 0,
-        };
-        if (circle.radius < midpointRadius) {
-          circleCenterPath.radius = units(circle.radius - minRadius);
-        } else {
-          circleCenterPath.radius = units(maxRadius - circle.radius);
-        }
+        const circleCenterRadius =
+          circle.radius < midpointRadius
+            ? circle.radius - minRadius
+            : maxRadius - circle.radius;
+        const circleCenterPath = unitCircle({
+          x: 0.5 + circle.centerOffset.x,
+          y: 0.5 + circle.centerOffset.y,
+          radius: circleCenterRadius,
+        });
 
         const circleCenter = getPointOnCircle(
           circleCenterPath,
@@ -351,12 +393,12 @@ const draw = (time: number) => {
         );
 
         ctx.strokeStyle = index % 2 === 0 ? "pink" : "darkblue";
-        ctx.lineWidth = units(0.007);
+        ctx.lineWidth = unit(0.007);
         ctx.beginPath();
         ctx.arc(
           circleCenter.x,
           circleCenter.y,
-          units(circle.radius),
+          unit(circle.radius),
           0,
           2 * Math.PI
         );
@@ -370,32 +412,31 @@ const draw = (time: number) => {
       break;
     }
     case Scene.Harp: {
-      const harpBounds: Bounds = {
-        top: canvasCenter.y - units(0.25),
-        right: canvasCenter.x + units(0.4375),
-        bottom: canvasCenter.y + units(0.25),
-        left: canvasCenter.x - units(0.4375),
-      };
+      const harpBounds = unitBounds({
+        top: 0.25,
+        right: 1.0 - 0.0625,
+        bottom: 0.75,
+        left: 0.0625,
+      });
 
       const stringBounds: Bounds = {
-        top: harpBounds.top + units(0.1),
-        right: harpBounds.right - units(0.05),
+        top: harpBounds.top + unit(0.1),
+        right: harpBounds.right - unit(0.05),
         bottom: harpBounds.bottom,
-        left: harpBounds.left + units(0.05),
+        left: harpBounds.left + unit(0.05),
       };
+      const stringRect = getRect(stringBounds);
 
       const stringCount = 8;
-      const stringBoundsWidth = stringBounds.right - stringBounds.left;
-      const stringBoundsHeight = stringBounds.bottom - stringBounds.top;
-      const distanceBetweenStrings = stringBoundsWidth / stringCount;
+      const distanceBetweenStrings = stringRect.width / stringCount;
 
       const pLeft: Point = {
         x: stringBounds.left,
-        y: stringBounds.top + stringBoundsHeight * 0.1,
+        y: stringBounds.top + stringRect.height * 0.1,
       };
       const pCenter: Point = {
         x: canvasCenter.x,
-        y: stringBounds.top + stringBoundsHeight * 0.8,
+        y: stringBounds.top + stringRect.height * 0.8,
       };
       const pRight: Point = {
         x: stringBounds.right,
@@ -473,7 +514,7 @@ const draw = (time: number) => {
 
       // Draw strings.
       ctx.strokeStyle = "pink";
-      ctx.lineWidth = units(0.007);
+      ctx.lineWidth = unit(0.007);
       for (const stringBottom of stringBottoms) {
         ctx.beginPath();
         ctx.moveTo(stringBottom.x, stringBounds.top);
@@ -483,43 +524,97 @@ const draw = (time: number) => {
       break;
     }
     case Scene.Blocks: {
-      const topBlocksCenterLine = canvasCenter.y - units(0.25);
-      const bottomBlocksCenterLine = canvasCenter.y + units(0.25);
+      const topRightBlocksCenter = unitPoint({ x: 0.75, y: 0.25 });
+      const bottomLeftBlocksCenter = unitPoint({ x: 0.25, y: 0.75 });
 
       if (constants.DEBUG) {
         ctx.strokeStyle = paletteStrings.debugLines;
         ctx.lineWidth = constants.debug.lineWidth;
 
         ctx.beginPath();
-        ctx.moveTo(-1, topBlocksCenterLine);
-        ctx.lineTo(canvasElement.width + 1, topBlocksCenterLine);
+        ctx.moveTo(-1, topRightBlocksCenter.y);
+        ctx.lineTo(canvasElement.width + 1, topRightBlocksCenter.y);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(-1, bottomBlocksCenterLine);
-        ctx.lineTo(canvasElement.width + 1, bottomBlocksCenterLine);
+        ctx.moveTo(-1, bottomLeftBlocksCenter.y);
+        ctx.lineTo(canvasElement.width + 1, bottomLeftBlocksCenter.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(bottomLeftBlocksCenter.x, -1);
+        ctx.lineTo(bottomLeftBlocksCenter.x, canvasElement.height + 1);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(topRightBlocksCenter.x, -1);
+        ctx.lineTo(topRightBlocksCenter.x, canvasElement.height + 1);
         ctx.stroke();
       }
 
       // Draw top blocks
       ctx.strokeStyle = "darkblue";
-      ctx.lineWidth = units(0.005);
-      const topBlocks: Bounds[] = [
-        {
-          top: topBlocksCenterLine - units(0.05),
-          bottom: topBlocksCenterLine + units(0.05),
-          left: canvasCenter.x + units(0.1666),
-          right: canvasCenter.x + units(0.2666),
-        },
+      ctx.lineWidth = unit(0.005);
+      ctx.fillStyle = "pink";
+      const topBlocks = [
+        unitRect({
+          x: 0.5,
+          y: 0.2,
+          width: 0.1,
+          height: 0.1,
+        }),
+        unitRect({
+          x: 0.6,
+          y: 0.2,
+          width: 0.1,
+          height: 0.1,
+        }),
+        unitRect({
+          x: 0.7,
+          y: 0.2,
+          width: 0.1,
+          height: 0.1,
+        }),
+        unitRect({
+          x: 0.8,
+          y: 0.2,
+          width: 0.1,
+          height: 0.1,
+        }),
+        unitRect({
+          x: 0.9,
+          y: 0.2,
+          width: 0.1,
+          height: 0.1,
+        }),
       ];
 
-      for (const block of topBlocks) {
-        ctx.strokeRect(
-          block.left,
-          block.top,
-          block.right - block.left,
-          block.bottom - block.top
-        );
+      const bottomBlocks = [
+        unitRect({
+          x: 0.1,
+          y: 0.7,
+          width: 0.1,
+          height: 0.1,
+        }),
+        unitRect({
+          x: 0.2,
+          y: 0.7,
+          width: 0.1,
+          height: 0.1,
+        }),
+        unitRect({
+          x: 0.3,
+          y: 0.7,
+          width: 0.1,
+          height: 0.1,
+        }),
+      ];
+
+      for (const block of [...topBlocks, ...bottomBlocks]) {
+        ctx.beginPath();
+        ctx.rect(block.x, block.y, block.width, block.height);
+        ctx.stroke();
+        ctx.fill();
       }
       break;
     }

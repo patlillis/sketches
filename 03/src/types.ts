@@ -4,7 +4,7 @@ export type Vector = { x: number; y: number };
 
 export type Line = { slope: number; intercept: number };
 
-export type Block = {
+export type Rect = {
   x: number;
   y: number;
   width: number;
@@ -24,7 +24,7 @@ export type Circle = {
   radius: number;
 };
 
-export type Video = { bounds: Block; intersectingBlocks: number[] };
+export type Video = { bounds: Rect; intersectingBlocks: number[] };
 
 export type Beat = { bars: number; beats: number; sixteenths: number };
 

@@ -2,15 +2,24 @@ import { initScene, startScene, resizeScene } from "./scene";
 import { initAudio, startAudio } from "./audio";
 import { Scene } from "./types";
 
+const HAVE_ENOUGH_DATA = 4;
+
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const videos: { [scene in Scene]?: HTMLVideoElement } = {
   [Scene.Circles]: document.getElementById("video0") as HTMLVideoElement,
   [Scene.Harp]: document.getElementById("video1") as HTMLVideoElement,
   [Scene.Blocks]: document.getElementById("video2") as HTMLVideoElement,
 };
+
 const videosLoadedPromises = Object.values(videos).map(
   (video) =>
-    new Promise((resolve) => video.addEventListener("canplaythrough", resolve))
+    new Promise((resolve) => {
+      if (video.readyState === HAVE_ENOUGH_DATA) {
+        resolve();
+      } else {
+        video.addEventListener("canplaythrough", resolve);
+      }
+    })
 );
 const startButton = document.getElementById("start");
 const startButtonWrapper = document.getElementById("start-wrapper");

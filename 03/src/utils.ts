@@ -1,9 +1,7 @@
 import {
   Beat,
-  Block,
+  Rect,
   Point,
-  Scene,
-  Video,
   HSLA,
   RGBA,
   Line,
@@ -51,7 +49,7 @@ export function add(a: Vector, b: Point): Point {
   return { x: a.x + b.x, y: a.y + b.y };
 }
 
-export function getIntersection(a: Block, b: Block): Block {
+export function getIntersection(a: Rect, b: Rect): Rect {
   const aMin: Point = { x: a.x, y: a.y };
   const aMax: Point = { x: a.x + a.width, y: a.y + a.height };
   const bMin: Point = { x: b.x, y: b.y };
@@ -66,7 +64,7 @@ export function getIntersection(a: Block, b: Block): Block {
     y: Math.min(aMax.y, bMax.y),
   };
 
-  const result: Block = {
+  const result: Rect = {
     x: maxOfMins.x,
     y: maxOfMins.y,
     width: minOfMaxes.x - maxOfMins.x,
@@ -115,19 +113,19 @@ export function scale(v: Vector, s: number): Vector {
   return { x: v.x * s, y: v.y * s };
 }
 
-export function getBounds(b: Block): Bounds {
+export function getBounds(r: Rect): Bounds {
   return {
-    top: b.y,
-    left: b.x,
-    bottom: b.y + b.height,
-    right: b.x + b.width,
+    left: r.x,
+    top: r.y,
+    bottom: r.y + r.height,
+    right: r.x + r.width,
   };
 }
 
-export function getBlock(b: Bounds): Block {
+export function getRect(b: Bounds): Rect {
   return {
-    x: b.top,
-    y: b.left,
+    x: b.left,
+    y: b.top,
     width: b.right - b.left,
     height: b.bottom - b.top,
   };
@@ -136,7 +134,7 @@ export function getBlock(b: Bounds): Block {
 /**
  * Tests whether `a` intersects with `b`.
  */
-export function intersects(a: Block, b: Block): boolean {
+export function intersects(a: Rect, b: Rect): boolean {
   if (a.x > b.x + b.width) return false;
   if (a.x + a.width < b.x) return false;
   if (a.y > b.y + b.height) return false;
@@ -145,8 +143,8 @@ export function intersects(a: Block, b: Block): boolean {
   return true;
 }
 
-export function enclosedIn(a: Block, b: Block): boolean;
-export function enclosedIn(a: Point, b: Block): boolean;
+export function enclosedIn(a: Rect, b: Rect): boolean;
+export function enclosedIn(a: Point, b: Rect): boolean;
 export function enclosedIn(a: Point, b: Circle): boolean;
 
 /**
@@ -154,13 +152,13 @@ export function enclosedIn(a: Point, b: Circle): boolean;
  */
 export function enclosedIn(a: any, b: any): boolean {
   if (a.height != null && a.width != null) {
-    // Testing a block is enclosed in a block.
-    const aBlock = a as Block;
-    const bBlock = b as Block;
-    if (aBlock.x < bBlock.x) return false;
-    if (aBlock.x + aBlock.width > bBlock.x + bBlock.width) return false;
-    if (aBlock.y < bBlock.y) return false;
-    if (aBlock.y + aBlock.height > bBlock.y + bBlock.height) return false;
+    // Testing a rect is enclosed in a rect.
+    const aRect = a as Rect;
+    const bRect = b as Rect;
+    if (aRect.x < bRect.x) return false;
+    if (aRect.x + aRect.width > bRect.x + bRect.width) return false;
+    if (aRect.y < bRect.y) return false;
+    if (aRect.y + aRect.height > bRect.y + bRect.height) return false;
     return true;
   }
 
@@ -177,13 +175,13 @@ export function enclosedIn(a: any, b: any): boolean {
     return true;
   }
 
-  // Testing if a point is enclosed in a block.
+  // Testing if a point is enclosed in a rect.
   const aPoint = a as Point;
-  const bBlock = b as Block;
-  if (aPoint.x < bBlock.x) return false;
-  if (aPoint.x > bBlock.x + bBlock.width) return false;
-  if (aPoint.y < bBlock.y) return false;
-  if (aPoint.y > bBlock.y + bBlock.height) return false;
+  const bRect = b as Rect;
+  if (aPoint.x < bRect.x) return false;
+  if (aPoint.x > bRect.x + bRect.width) return false;
+  if (aPoint.y < bRect.y) return false;
+  if (aPoint.y > bRect.y + bRect.height) return false;
   return true;
 }
 
@@ -351,5 +349,79 @@ export function getPointOnCircle(circle: Circle, offset: number): Point {
   return {
     x: circle.x + circle.radius * Math.cos(-offset),
     y: circle.y + circle.radius * Math.sin(-offset),
+  };
+}
+
+/**
+ * Constructs a set of functions, based on the current canvas size, that helps
+ * translate unit values or objects into actual canvas values or objects.
+ *
+ * This helps keep the scene responsive to changing screen sizes and aspect
+ * ratios.
+ */
+export function buildUnitFuntions(
+  minCanvasSize: number,
+  canvasCenter: Point
+): {
+  /** Scales an arbitrary multiplier by the current unit size of the canvas. */
+  unit: (multiplier: number) => number;
+
+  /** Positions a point on the unit grid of the drawing canvas. */
+  unitPoint: (position: Point) => Point;
+
+  /** Positions and scales a rect on the unit grid of the drawing canvas. */
+  unitRect: {
+    (rect: Rect): Rect;
+    (bounds: Bounds): Rect;
+  };
+
+  /** Positions and scales a bounds on the unit grid of the drawing canvas. */
+  unitBounds: {
+    (rect: Rect): Bounds;
+    (bounds: Bounds): Bounds;
+  };
+
+  /** Positions and scales a circle on the unit grid of the drawing canvas. */
+  unitCircle: (circle: Circle) => Circle;
+} {
+  const unit = (multiplier: number): number => minCanvasSize * multiplier;
+
+  const unitPoint = (position: Point): Point => ({
+    x: canvasCenter.x + unit(position.x - 0.5),
+    y: canvasCenter.y + unit(position.y - 0.5),
+  });
+
+  const unitRect = (rectOrBounds: any): Rect => {
+    let rect: Rect;
+    if (rectOrBounds.height != null && rectOrBounds.width != null) {
+      // Transforming a Rect.
+      rect = rectOrBounds as Rect;
+    } else {
+      // Transforming a Bounds.
+      rect = getRect(rectOrBounds as Bounds);
+    }
+    return {
+      ...unitPoint(rect),
+      width: unit(rect.width),
+      height: unit(rect.height),
+    };
+  };
+
+  const unitBounds = (rectOrBounds: any): Bounds => {
+    const rect = unitRect(rectOrBounds);
+    return getBounds(rect);
+  };
+
+  const unitCircle = (circle: Circle): Circle => ({
+    ...unitPoint(circle),
+    radius: unit(circle.radius),
+  });
+
+  return {
+    unit,
+    unitPoint,
+    unitRect,
+    unitBounds,
+    unitCircle,
   };
 }
