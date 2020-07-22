@@ -11,6 +11,7 @@ import {
   getRect,
   clamp,
   lerp,
+  enclosedIn,
 } from "./utils";
 import { Point, Scene, Vector, Bounds, Rect } from "./types";
 import { meter, transitionScene } from "./audio";
@@ -64,26 +65,34 @@ const circles: {
 // This is controlled by the mouse position.
 let circleSpeedMultiplier = constants.circle.MIN_SPEED_MODIFIER;
 
-const blockDefinitions: Rect[] = [
+const blockPositionsAndNotes = [
   // Top blocks.
-  { x: 0.565, y: 0.24, width: 0.09, height: 0.1 },
-  { x: 0.485, y: 0.22, width: 0.1, height: 0.1 },
-  { x: 0.855, y: 0.23, width: 0.06, height: 0.06 },
-  { x: 0.785, y: 0.253, width: 0.08, height: 0.08 },
-  { x: 0.685, y: 0.2, width: 0.1, height: 0.1 },
+  { position: { x: 0.565, y: 0.24, width: 0.09, height: 0.1 }, note: "a3" },
+  { position: { x: 0.485, y: 0.22, width: 0.1, height: 0.1 }, note: "b3" },
+  { position: { x: 0.855, y: 0.23, width: 0.06, height: 0.06 }, note: "c3" },
+  { position: { x: 0.785, y: 0.253, width: 0.08, height: 0.08 }, note: "d3" },
+  { position: { x: 0.685, y: 0.2, width: 0.1, height: 0.1 }, note: "e3" },
 
   // Bottom blocks.
-  { x: 0.265, y: 0.7, width: 0.1, height: 0.12 },
-  { x: 0.185, y: 0.72, width: 0.1, height: 0.07 },
-  { x: 0.085, y: 0.69, width: 0.1, height: 0.11 },
+  { position: { x: 0.265, y: 0.7, width: 0.1, height: 0.12 }, note: "f3" },
+  { position: { x: 0.185, y: 0.72, width: 0.1, height: 0.07 }, note: "g3" },
+  { position: { x: 0.085, y: 0.69, width: 0.1, height: 0.11 }, note: "a4" },
 ];
-// Add random sway to each block.
-const blocks = blockDefinitions.map((position) => ({
-  position,
+const blockDefinitions = blockPositionsAndNotes.map((block) => ({
+  ...block,
+
+  // Add random sway to each block.
   swaySpeed: tombola.rangeFloat(0.001, 0.005),
   swayDirection: tombola.item([-1.0, +1.0]),
   swayOffset: tombola.rangeFloat(0, 1.0),
+
+  // Track hover state.
+  hover: false,
+
+  // Track click state.
+  active: false,
 }));
+type BlockDefinition = typeof blockDefinitions[0];
 
 declare global {
   interface Window {
@@ -158,6 +167,15 @@ const wrapDraw = (drawFunc: () => void) => {
   ctx.restore();
 };
 
+const calculateUnitFunctions = () => {
+  const canvasCenter: Point = {
+    x: canvasElement.width / 2,
+    y: canvasElement.height / 2,
+  };
+  const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
+  return buildUnitFuntions(minCanvasSize, canvasCenter);
+};
+
 const draw = (time: number) => {
   // Track FPS.
   const now = performance.now();
@@ -182,7 +200,6 @@ const draw = (time: number) => {
     x: canvasElement.width / 2,
     y: canvasElement.height / 2,
   };
-  const minCanvasSize = Math.min(canvasElement.width, canvasElement.height);
 
   const {
     unit,
@@ -190,7 +207,7 @@ const draw = (time: number) => {
     unitRect,
     unitBounds,
     unitCircle,
-  } = buildUnitFuntions(minCanvasSize, canvasCenter);
+  } = calculateUnitFunctions();
 
   // Draw video.
   let videoBackground = videoElements[currentScene];
@@ -579,9 +596,10 @@ const draw = (time: number) => {
       // Draw blocks
       ctx.strokeStyle = "darkblue";
       ctx.lineWidth = unit(0.005);
-      ctx.fillStyle = "pink";
 
-      for (const block of blocks) {
+      for (const block of blockDefinitions) {
+        ctx.fillStyle = block.active ? "blue" : block.hover ? "red" : "pink";
+
         const swayOffset = lerp(
           -constants.block.MAX_SWAY,
           constants.block.MAX_SWAY,
@@ -605,7 +623,7 @@ const draw = (time: number) => {
       }
 
       // Update bob & sway.
-      for (const block of blocks) {
+      for (const block of blockDefinitions) {
         block.swayOffset += block.swayDirection * block.swaySpeed;
         if (block.swayOffset >= 1 || block.swayOffset <= 0) {
           block.swayDirection = -block.swayDirection;
@@ -639,7 +657,19 @@ export const resizeScene = (newScreenSize: Vector) => {
   resizeParams(oldScreenSize, newScreenSize);
 };
 
-const onMouseClick = (mousePosition: Point) => {};
+const onMouseClick = (mousePosition: Point) => {
+  switch (currentScene) {
+    case Scene.Blocks: {
+      for (const block of blockDefinitions) {
+        if (block.hover) {
+          block.active = true;
+          console.log(`Playing block ${block.note}`);
+        }
+      }
+      break;
+    }
+  }
+};
 
 const updateCircleSpeedMultiplier = (mousePosition: Point) => {
   const canvasCenter: Point = {
@@ -657,12 +687,42 @@ const updateCircleSpeedMultiplier = (mousePosition: Point) => {
 };
 
 const onMouseMove = (mousePosition: Point) => {
-  if (currentScene === Scene.Circles) {
-    updateCircleSpeedMultiplier(mousePosition);
+  const { unitRect } = calculateUnitFunctions();
+
+  switch (currentScene) {
+    case Scene.Circles: {
+      // Update circle speed multiplier.
+      updateCircleSpeedMultiplier(mousePosition);
+      break;
+    }
+    case Scene.Blocks: {
+      let hoveredBlock: BlockDefinition;
+      let previouslyActiveBlock: BlockDefinition;
+
+      for (const block of blockDefinitions) {
+        if (block.active) previouslyActiveBlock = block;
+
+        block.hover = false;
+        block.active = false;
+
+        if (enclosedIn(mousePosition, unitRect(block.position))) {
+          hoveredBlock = block;
+        }
+      }
+
+      if (hoveredBlock != null) hoveredBlock.hover = true;
+      if (hoveredBlock != null && hoveredBlock === previouslyActiveBlock) {
+        previouslyActiveBlock.active = true;
+      }
+    }
   }
 };
 
-const onMouseRelease = (mousePosition: Point) => {};
+const onMouseRelease = (mousePosition: Point) => {
+  for (const block of blockDefinitions) {
+    block.active = false;
+  }
+};
 
 const setScene = (scene: Scene) => {
   const previousScene = currentScene;
