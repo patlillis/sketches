@@ -66,17 +66,18 @@ let circleSpeedMultiplier = constants.circle.MIN_SPEED_MODIFIER;
 
 const blockDefinitions: Rect[] = [
   // Top blocks.
-  { x: 0.5, y: 0.2, width: 0.1, height: 0.1 },
-  { x: 0.6, y: 0.2, width: 0.1, height: 0.1 },
-  { x: 0.7, y: 0.2, width: 0.1, height: 0.1 },
-  { x: 0.8, y: 0.2, width: 0.1, height: 0.1 },
-  { x: 0.9, y: 0.2, width: 0.1, height: 0.1 },
+  { x: 0.565, y: 0.24, width: 0.09, height: 0.1 },
+  { x: 0.485, y: 0.22, width: 0.1, height: 0.1 },
+  { x: 0.855, y: 0.23, width: 0.06, height: 0.06 },
+  { x: 0.785, y: 0.253, width: 0.08, height: 0.08 },
+  { x: 0.685, y: 0.2, width: 0.1, height: 0.1 },
 
   // Bottom blocks.
-  { x: 0.28, y: 0.7, width: 0.1, height: 0.12 },
-  { x: 0.2, y: 0.72, width: 0.1, height: 0.07 },
-  { x: 0.1, y: 0.69, width: 0.1, height: 0.11 },
+  { x: 0.265, y: 0.7, width: 0.1, height: 0.12 },
+  { x: 0.185, y: 0.72, width: 0.1, height: 0.07 },
+  { x: 0.085, y: 0.69, width: 0.1, height: 0.11 },
 ];
+// Add random sway to each block.
 const blocks = blockDefinitions.map((position) => ({
   position,
   swaySpeed: tombola.rangeFloat(0.001, 0.005),
