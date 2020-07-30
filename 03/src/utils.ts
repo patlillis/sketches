@@ -9,6 +9,7 @@ import {
   Bounds,
   Color,
   Circle,
+  RGB,
 } from "./types";
 
 /**
@@ -277,6 +278,10 @@ function rgbaToString(color: RGBA): string {
   return `rgba(${color.r} ${color.g} ${color.b} / ${color.a})`;
 }
 
+function rgbToString(color: RGB): string {
+  return `rgba(${color.r} ${color.g} ${color.b})`;
+}
+
 export function colorToString(color: Color): string {
   if (typeof color !== "object") throw new Error("Colors must be objects.");
 
@@ -286,6 +291,10 @@ export function colorToString(color: Color): string {
 
   if (["r", "g", "b", "a"].every((c) => color.hasOwnProperty(c))) {
     return rgbaToString(color as RGBA);
+  }
+
+  if (["r", "g", "b"].every((c) => color.hasOwnProperty(c))) {
+    return rgbToString(color as RGB);
   }
 
   throw new Error("This isn't a color..");

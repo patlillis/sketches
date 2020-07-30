@@ -28,6 +28,8 @@ export type Video = { bounds: Rect; intersectingBlocks: number[] };
 
 export type Beat = { bars: number; beats: number; sixteenths: number };
 
+export type RGB = { r: number; g: number; b: number };
+
 export type RGBA = { r: number; g: number; b: number; a: number };
 
 export type HSLA = {
@@ -41,7 +43,7 @@ export type HSLA = {
   a: number;
 };
 
-export type Color = RGBA | HSLA;
+export type Color = RGB | RGBA | HSLA;
 
 export enum Scene {
   Title = "Title",
