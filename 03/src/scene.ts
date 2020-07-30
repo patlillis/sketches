@@ -1,31 +1,18 @@
 import { Tween, Ease, Ticker } from "@createjs/tweenjs";
 
 import * as constants from "./constants";
-import {
-  remapValues,
-  getPointOnCircle,
-  getDistance,
-  getPointAlongLine,
-  getLineBetween,
-  buildUnitFuntions,
-  getRect,
-  clamp,
-  lerp,
-  enclosedIn,
-  colorToString,
-} from "./utils";
-import { Point, Scene, Vector, Bounds, Rect } from "./types";
+import { buildUnitFuntions } from "./utils";
+import { Point, Scene, Vector } from "./types";
 import { meter, transitionScene } from "./audio";
 import { Palette, loadPalette, PaletteStrings } from "./palette";
 import { resizeParams } from "./params";
-import tombola from "./tombola";
 
 export let videoElements: { [scene in Scene]?: HTMLVideoElement };
 export let canvasElement: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
 export let palette: Palette;
 export let paletteStrings: PaletteStrings;
-export let currentScene;
+export let currentScene: Scene;
 
 let previousFrameTime: number;
 
@@ -238,6 +225,88 @@ const draw = (time: number) => {
       }
     });
   }
+
+  // Draw title & navigation
+  wrapDraw(() => {
+    let currentSceneTitle: string;
+    let prevSceneTitle: string;
+    let nextSceneTitle: string;
+    switch (currentScene) {
+      case Scene.Circles:
+        currentSceneTitle = "PIÑATA";
+        nextSceneTitle = "snowfall";
+        break;
+      case Scene.Harp:
+        currentSceneTitle = "SNOWFALL";
+        prevSceneTitle = "piñata";
+        nextSceneTitle = "poolside";
+        break;
+      case Scene.Blocks:
+        currentSceneTitle = "POOLSIDE";
+        prevSceneTitle = "snowfall";
+        break;
+      default:
+    }
+
+    // Draw title in top-left corner.
+    // TODO: calculate text size.
+    const textSize = canvasElement.width / 15;
+    const textPadding = canvasElement.width / 50;
+
+    ctx.strokeStyle = "white";
+    ctx.fillStyle = "white";
+    ctx.font = `bold ${textSize * 0.9}px Josefin Sans`;
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = textSize * 0.08;
+
+    if (constants.DEBUG) {
+      wrapDraw(() => {
+        for (let i = 0; i < 5; i++) {
+          ctx.strokeStyle = `rgb(${(255 / 5) * i}, ${(255 / 5) * i}, ${
+            (255 / 5) * i
+          })`;
+          ctx.lineWidth = textSize / 100;
+
+          ctx.beginPath();
+          ctx.moveTo(textPadding + textSize * (0.5 + 0.1 * i), textPadding);
+          ctx.lineTo(
+            textPadding + textSize * 0.5 + 10 * i,
+            textPadding + textSize
+          );
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(textPadding + textSize * (0.5 - 0.1 * i), textPadding);
+          ctx.lineTo(
+            textPadding + textSize * (0.5 - 0.1 * i),
+            textPadding + textSize
+          );
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(textPadding, textPadding + textSize * (0.5 + 0.1 * i));
+          ctx.lineTo(
+            textPadding + textSize,
+            textPadding + textSize * (0.5 + 0.1 * i)
+          );
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(textPadding, textPadding + textSize * (0.5 - 0.1 * i));
+          ctx.lineTo(
+            textPadding + textSize,
+            textPadding + textSize * (0.5 - 0.1 * i)
+          );
+          ctx.stroke();
+        }
+      });
+    }
+
+    ctx.strokeRect(textPadding, textPadding, textSize, textSize);
+    ctx.fillText(
+      currentSceneTitle,
+      textPadding + textSize * 0.1,
+      textPadding + textSize * 0.6
+    );
+  });
 
   // RAF for next frame.
   requestAnimationFrame(draw);
