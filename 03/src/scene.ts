@@ -1,8 +1,8 @@
-import { Tween, Ease, Ticker } from "@createjs/tweenjs";
+import { Tween, Ease, Ticker, TweenStep } from "@createjs/tweenjs";
 
 import * as constants from "./constants";
 import { buildUnitFuntions } from "./utils";
-import { Point, Scene, Vector } from "./types";
+import { Point, Scene, Vector, Rect } from "./types";
 import { meter, transitionScene } from "./audio";
 import { Palette, loadPalette, PaletteStrings } from "./palette";
 import { resizeParams } from "./params";
@@ -17,16 +17,18 @@ export let currentScene: Scene;
 let previousFrameTime: number;
 
 // In the real thing, this will be Scene.Title.
-const defaultScene = Scene.Circles;
+const defaultScene = Scene.Pinata;
 
 declare global {
   interface Window {
     /** For testing, can do `window.setScene("Title")`. */
-    setScene: (scene: keyof Scene) => void;
+    setScene: (scene: string) => void;
   }
 }
-window.setScene = (scene: keyof Scene) => {
-  if (Scene[scene] != null) setScene(Scene[scene]);
+window.setScene = (newScene: string) => {
+  for (const scene of Object.values(Scene)) {
+    if (newScene.toLowerCase() === scene.toLowerCase()) setScene(scene);
+  }
 };
 
 export const initScene = async (
@@ -232,80 +234,21 @@ const draw = (time: number) => {
     let prevSceneTitle: string;
     let nextSceneTitle: string;
     switch (currentScene) {
-      case Scene.Circles:
+      case Scene.Pinata:
         currentSceneTitle = "PIÑATA";
         nextSceneTitle = "snowfall";
         break;
-      case Scene.Harp:
+      case Scene.Snowfall:
         currentSceneTitle = "SNOWFALL";
         prevSceneTitle = "piñata";
         nextSceneTitle = "poolside";
         break;
-      case Scene.Blocks:
+      case Scene.Poolside:
         currentSceneTitle = "POOLSIDE";
         prevSceneTitle = "snowfall";
         break;
       default:
     }
-
-    // Draw title in top-left corner.
-    // TODO: calculate text size.
-    const textSize = canvasElement.width / 15;
-    const textPadding = canvasElement.width / 50;
-
-    ctx.strokeStyle = "white";
-    ctx.fillStyle = "white";
-    ctx.font = `bold ${textSize * 0.9}px Josefin Sans`;
-    ctx.textBaseline = "middle";
-    ctx.lineWidth = textSize * 0.08;
-
-    if (constants.DEBUG) {
-      wrapDraw(() => {
-        for (let i = 0; i < 5; i++) {
-          ctx.strokeStyle = `rgb(${(255 / 5) * i}, ${(255 / 5) * i}, ${
-            (255 / 5) * i
-          })`;
-          ctx.lineWidth = textSize / 100;
-
-          ctx.beginPath();
-          ctx.moveTo(textPadding + textSize * (0.5 + 0.1 * i), textPadding);
-          ctx.lineTo(
-            textPadding + textSize * 0.5 + 10 * i,
-            textPadding + textSize
-          );
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(textPadding + textSize * (0.5 - 0.1 * i), textPadding);
-          ctx.lineTo(
-            textPadding + textSize * (0.5 - 0.1 * i),
-            textPadding + textSize
-          );
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.moveTo(textPadding, textPadding + textSize * (0.5 + 0.1 * i));
-          ctx.lineTo(
-            textPadding + textSize,
-            textPadding + textSize * (0.5 + 0.1 * i)
-          );
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(textPadding, textPadding + textSize * (0.5 - 0.1 * i));
-          ctx.lineTo(
-            textPadding + textSize,
-            textPadding + textSize * (0.5 - 0.1 * i)
-          );
-          ctx.stroke();
-        }
-      });
-    }
-
-    ctx.strokeRect(textPadding, textPadding, textSize, textSize);
-    ctx.fillText(
-      currentSceneTitle,
-      textPadding + textSize * 0.1,
-      textPadding + textSize * 0.6
-    );
   });
 
   // RAF for next frame.
@@ -336,9 +279,16 @@ const onMouseMove = (mousePosition: Point) => {};
 
 const onMouseRelease = (mousePosition: Point) => {};
 
-const setScene = (scene: Scene) => {
+const setScene = (newScene: Scene) => {
   const previousScene = currentScene;
-  currentScene = scene;
+  currentScene = newScene;
+
+  // Set current scene name on body.
+  for (const scene of Object.values(Scene)) {
+    const className = scene.toLowerCase();
+    document.body.classList.remove(className);
+  }
+  document.body.classList.add(newScene.toLowerCase());
 
   transitionScene(previousScene, currentScene);
 };

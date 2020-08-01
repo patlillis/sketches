@@ -2,13 +2,15 @@ import { initScene, startScene, resizeScene } from "./scene";
 import { initAudio, startAudio } from "./audio";
 import { Scene } from "./types";
 
+import "../styles/index.scss";
+
 const HAVE_ENOUGH_DATA = 4;
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const videos: { [scene in Scene]?: HTMLVideoElement } = {
-  [Scene.Circles]: document.getElementById("video0") as HTMLVideoElement,
-  [Scene.Harp]: document.getElementById("video1") as HTMLVideoElement,
-  [Scene.Blocks]: document.getElementById("video2") as HTMLVideoElement,
+  [Scene.Pinata]: document.getElementById("video0") as HTMLVideoElement,
+  [Scene.Snowfall]: document.getElementById("video1") as HTMLVideoElement,
+  [Scene.Poolside]: document.getElementById("video2") as HTMLVideoElement,
 };
 
 const videosLoadedPromises = Object.values(videos).map(

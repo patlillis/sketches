@@ -17,7 +17,11 @@
     "tone": "^14.6.4"
   },
   "devDependencies": {
+    "css-loader": "^4.2.0",
+    "node-sass": "^4.14.1",
+    "sass-loader": "^9.0.2",
     "serve": "^11.3.2",
+    "style-loader": "^1.2.1",
     "ts-loader": "^7.0.0",
     "typescript": "^3.8.3",
     "webpack": "^4.42.1",
