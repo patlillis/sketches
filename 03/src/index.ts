@@ -1,4 +1,4 @@
-import { initScene, startScene, resizeScene } from "./scene";
+import { initScene, startScene, resizeScene, setScene } from "./scene";
 import { initAudio, startAudio } from "./audio";
 import { Scene } from "./types";
 
@@ -12,6 +12,9 @@ const videos: { [scene in Scene]?: HTMLVideoElement } = {
   [Scene.Snowfall]: document.getElementById("video1") as HTMLVideoElement,
   [Scene.Poolside]: document.getElementById("video2") as HTMLVideoElement,
 };
+const navigationButtons: HTMLElement[] = Array.from(
+  document.querySelectorAll("button.next, button.prev")
+);
 
 const videosLoadedPromises = Object.values(videos).map(
   (video) =>
@@ -63,3 +66,12 @@ const onStartClicked = async () => {
 startButton.addEventListener("click", onStartClicked);
 window.addEventListener("load", onInit);
 window.addEventListener("resize", onResize);
+for (const button of navigationButtons) {
+  button.addEventListener("click", () => {
+    const { target } = button.dataset;
+    const targetScene = Object.values(Scene).find(
+      (scene) => target.toLowerCase() === scene.toLowerCase()
+    );
+    if (targetScene != null) setScene(targetScene);
+  });
+}

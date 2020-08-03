@@ -116,6 +116,20 @@ body {
     display: none;
   }
 
+  .prev,
+  .next {
+    font: inherit;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+
+    &:focus,
+    &:active {
+      outline: $background-color solid;
+    }
+  }
+
   .title {
     top: 20px;
     left: 20px;

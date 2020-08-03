@@ -279,7 +279,7 @@ const onMouseMove = (mousePosition: Point) => {};
 
 const onMouseRelease = (mousePosition: Point) => {};
 
-const setScene = (newScene: Scene) => {
+export const setScene = (newScene: Scene) => {
   const previousScene = currentScene;
   currentScene = newScene;
 
