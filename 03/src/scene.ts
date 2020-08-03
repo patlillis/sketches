@@ -1,7 +1,14 @@
 import { Tween, Ease, Ticker, TweenStep } from "@createjs/tweenjs";
 
 import * as constants from "./constants";
-import { buildUnitFuntions } from "./utils";
+import {
+  buildUnitFuntions,
+  lerp,
+  getAngle,
+  add,
+  subtract,
+  colorToString,
+} from "./utils";
 import { Point, Scene, Vector, Rect } from "./types";
 import { meter, transitionScene } from "./audio";
 import { Palette, loadPalette, PaletteStrings } from "./palette";
@@ -14,10 +21,61 @@ export let palette: Palette;
 export let paletteStrings: PaletteStrings;
 export let currentScene: Scene;
 
+type Control = {
+  offPosition: Point;
+  onPosition: Point;
+  sliderAngle: number;
+  // In raget [0, 1].
+  currentValue: number;
+  // For tracking movement.
+  dragging: false;
+  // Position on slider that mouse was clicked.
+  dragPoint: Point;
+  // Position the slider should be moving towards.
+  targetPoisition: Point;
+};
+
+const buildControl = ({
+  offPosition,
+  onPosition,
+  startValue = 0.5,
+}: {
+  offPosition: Point;
+  onPosition: Point;
+  startValue?: number;
+}): Control => ({
+  offPosition,
+  onPosition,
+  sliderAngle: getAngle(offPosition, onPosition),
+  currentValue: startValue,
+  dragging: false,
+  dragPoint: { x: 0, y: 0 },
+  targetPoisition: { x: 0, y: 0 },
+});
+
+const controls = {
+  [Scene.Snowfall]: {
+    primary: buildControl({
+      offPosition: { x: 0.1, y: 0.8 },
+      onPosition: { x: 0.4, y: 0.8 },
+    }),
+    secondary: [
+      buildControl({
+        offPosition: { x: 0.65, y: 0.1 },
+        onPosition: { x: 0.65, y: 0.4 },
+      }),
+      buildControl({
+        offPosition: { x: 0.85, y: 0.1 },
+        onPosition: { x: 0.85, y: 0.4 },
+      }),
+    ],
+  },
+};
+
 let previousFrameTime: number;
 
 // In the real thing, this will be Scene.Title.
-const defaultScene = Scene.Pinata;
+const defaultScene = Scene.Snowfall;
 
 declare global {
   interface Window {
@@ -84,6 +142,14 @@ export const initScene = async (
   canvasElement.width = window.innerWidth;
   canvasElement.height = window.innerHeight;
 
+  ({
+    unit,
+    unitPoint,
+    unitRect,
+    unitBounds,
+    unitCircle,
+  } = calculateUnitFunctions());
+
   // Make sure tweenjs updates timing properly.
   Ticker.timingMode = Ticker.RAF;
 };
@@ -103,6 +169,14 @@ const calculateUnitFunctions = () => {
   return buildUnitFuntions(minCanvasSize, canvasCenter);
 };
 
+let {
+  unit,
+  unitPoint,
+  unitRect,
+  unitBounds,
+  unitCircle,
+}: ReturnType<typeof calculateUnitFunctions> = {} as any;
+
 const draw = (time: number) => {
   // Track FPS.
   const now = performance.now();
@@ -121,20 +195,6 @@ const draw = (time: number) => {
     ctx.fillStyle = paletteStrings.background;
     ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
   });
-
-  // Canvas sizes/points that are used in multiple scenes.
-  const canvasCenter: Point = {
-    x: canvasElement.width / 2,
-    y: canvasElement.height / 2,
-  };
-
-  const {
-    unit,
-    unitPoint,
-    unitRect,
-    unitBounds,
-    unitCircle,
-  } = calculateUnitFunctions();
 
   // Draw video.
   let videoBackground = videoElements[currentScene];
@@ -228,6 +288,14 @@ const draw = (time: number) => {
     });
   }
 
+  // Draw controls for scene.
+  if (currentScene === Scene.Snowfall) {
+    const sceneControls = controls[currentScene];
+
+    drawControl(sceneControls.primary, { isPrimary: true });
+    sceneControls.secondary.forEach((c) => drawControl(c));
+  }
+
   // Draw title & navigation
   wrapDraw(() => {
     let currentSceneTitle: string;
@@ -255,6 +323,121 @@ const draw = (time: number) => {
   requestAnimationFrame(draw);
 };
 
+const drawControl = (control: Control, { isPrimary = false } = {}) => {
+  const currentPositionUnit = lerp(
+    control.offPosition,
+    control.onPosition,
+    control.currentValue
+  );
+  const currentPosition = unitPoint(currentPositionUnit);
+
+  // Draw control itself.
+  wrapDraw(() => {
+    ctx.fillStyle = isPrimary ? "blue" : "lightblue";
+
+    ctx.beginPath();
+    if (isPrimary) {
+      // Draw rectangle (for now).
+      ctx.fillRect(currentPosition.x - 50, currentPosition.y - 50, 100, 100);
+    } else {
+      // Draw circle (for now).
+      ctx.arc(currentPosition.x, currentPosition.y, 35, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  });
+
+  // Draw arrows.
+  wrapDraw(() => {
+    const arrowAlpha = 1.0;
+    ctx.globalAlpha = arrowAlpha;
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = colorToString(palette.background);
+    ctx.lineWidth = 2;
+    const arrowDistance = 15 * arrowAlpha + 70;
+
+    // Draw arrow towards 1.0
+    ctx.globalAlpha = arrowAlpha;
+    if (control.currentValue >= 0.95) {
+      ctx.globalAlpha = 0.2 * arrowAlpha;
+    }
+    const forwardAngle = control.sliderAngle;
+    const forwardOffsetX = Math.cos(forwardAngle) * arrowDistance;
+    const forwardOffsetY = -Math.sin(forwardAngle) * arrowDistance;
+    drawArrow(
+      add(currentPosition, { x: forwardOffsetX, y: forwardOffsetY }),
+      forwardAngle
+    );
+
+    // Draw arrow towards 0.0
+    ctx.globalAlpha = arrowAlpha;
+    if (control.currentValue <= 0.05) {
+      ctx.globalAlpha = 0.2 * arrowAlpha;
+    }
+    const backwardAngle = Math.PI + forwardAngle;
+    const backwardOffsetX = -Math.cos(backwardAngle) * arrowDistance;
+    const backwardOffsetY = Math.sin(backwardAngle) * arrowDistance;
+    drawArrow(
+      subtract(currentPosition, { x: backwardOffsetX, y: backwardOffsetY }),
+      backwardAngle
+    );
+  });
+};
+
+// Offset is a Vector (pixels), angle is in radians.
+// Angle of 0 means draw it pointing to the right.
+const drawArrow = (arrowOrigin: Point, arrowAngle: number) => {
+  const arrowLength = 20;
+  const arrowWidth = 6;
+  const arrowInnerWidth = arrowLength - arrowWidth;
+  // const arrowOrigin = Vector.add(origin, offset);
+
+  // The angle of the main arrow bend
+  const theta = Math.PI / 4;
+  const sinTheta = Math.sin(theta);
+  const cosTheta = Math.cos(theta);
+
+  // The angle of the outer corners
+  const angle = Math.PI / 4;
+  const sinAngle = Math.sin(angle);
+  const cosAngle = Math.cos(angle);
+
+  wrapDraw(() => {
+    ctx.translate(arrowOrigin.x, arrowOrigin.y);
+    ctx.rotate(-arrowAngle + 1 * (Math.PI / 2));
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+
+    var x = -(arrowLength * sinTheta);
+    var y = arrowLength * cosTheta;
+    ctx.lineTo(x, y);
+
+    x += arrowWidth * sinAngle;
+    y += arrowWidth * cosAngle;
+    ctx.lineTo(x, y);
+
+    x += arrowInnerWidth * sinTheta;
+    y -= arrowInnerWidth * cosTheta;
+    ctx.lineTo(x, y);
+
+    x += arrowInnerWidth * sinTheta;
+    y += arrowInnerWidth * cosTheta;
+    ctx.lineTo(x, y);
+
+    x += arrowWidth * sinAngle;
+    y -= arrowWidth * cosAngle;
+    ctx.lineTo(x, y);
+
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.stroke();
+  });
+  // reset current transformation matrix to the identity matrix
+  // ctx.rotate(arrowAngle - 1 * (Math.PI / 2));
+  // ctx.translate(-arrowOrigin.x, -arrowOrigin.y);
+};
+
 export const startScene = async () => {
   for (const videoElement of Object.values(videoElements)) videoElement.play();
   requestAnimationFrame(draw);
@@ -271,6 +454,14 @@ export const resizeScene = (newScreenSize: Vector) => {
   canvasElement.height = newScreenSize.y;
 
   resizeParams(oldScreenSize, newScreenSize);
+
+  ({
+    unit,
+    unitPoint,
+    unitRect,
+    unitBounds,
+    unitCircle,
+  } = calculateUnitFunctions());
 };
 
 const onMouseClick = (mousePosition: Point) => {};

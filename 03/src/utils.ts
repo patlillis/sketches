@@ -46,8 +46,12 @@ export function toBeat(barsBeatsSixteenths: string): Beat {
   };
 }
 
-export function add(a: Vector, b: Point): Point {
+export function add(a: Vector, b: Vector): Vector {
   return { x: a.x + b.x, y: a.y + b.y };
+}
+
+export function subtract(a: Vector, b: Vector): Vector {
+  return { x: a.x - b.x, y: a.y - b.y };
 }
 
 export function getIntersection(a: Rect, b: Rect): Rect {
@@ -359,6 +363,15 @@ export function getPointOnCircle(circle: Circle, offset: number): Point {
     x: circle.x + circle.radius * Math.cos(-offset),
     y: circle.y + circle.radius * Math.sin(-offset),
   };
+}
+
+/**
+ * Gets the angle (in radians) from point1 to point2.
+ */
+export function getAngle(point1: Point, point2: Point): number {
+  var dx = point1.x - point2.x;
+  var dy = point1.y - point2.y;
+  return Math.atan2(dy, dx);
 }
 
 /**

@@ -123,11 +123,7 @@ body {
     border: none;
     color: inherit;
     cursor: pointer;
-
-    &:focus,
-    &:active {
-      outline: $background-color solid;
-    }
+    outline: none;
   }
 
   .title {
