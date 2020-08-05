@@ -90,6 +90,11 @@ export function getLineBetween(a: Point, b: Point): Line {
   return { slope, intercept };
 }
 
+export function getIntercept(point: Point, slope: number) {
+  const intercept = point.y - slope * point.x;
+  return intercept;
+}
+
 export function getPointAlongLine(line: Line, { x }: { x: number }): Point;
 export function getPointAlongLine(line: Line, { y }: { y: number }): Point;
 

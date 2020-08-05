@@ -9,10 +9,11 @@ import {
   subtract,
   colorToString,
 } from "./utils";
-import { Point, Scene, Vector, Rect } from "./types";
+import { Point, Scene, Vector, Rect, RGBA, RGB } from "./types";
 import { meter, transitionScene } from "./audio";
 import { Palette, loadPalette, PaletteStrings } from "./palette";
 import { resizeParams } from "./params";
+import tombola from "./tombola";
 
 export let videoElements: { [scene in Scene]?: HTMLVideoElement };
 export let canvasElement: HTMLCanvasElement;
@@ -35,6 +36,21 @@ type Control = {
   targetPoisition: Point;
 };
 
+type PrimaryControl = Control & {
+  isPrimary: true;
+};
+type SecondaryControl = Control & {
+  isPrimary: false;
+  shapes: SecondaryControlShape[];
+};
+type SecondaryControlShape = {
+  xOffset: number;
+  yOffset: number;
+  width: number;
+  height: number;
+  color: RGBA;
+};
+
 const buildControl = ({
   offPosition,
   onPosition,
@@ -53,18 +69,84 @@ const buildControl = ({
   targetPoisition: { x: 0, y: 0 },
 });
 
+const buildPrimaryControl = ({
+  offPosition,
+  onPosition,
+  startValue = 0.5,
+}: {
+  offPosition: Point;
+  onPosition: Point;
+  startValue?: number;
+}): PrimaryControl => ({
+  ...buildControl({ offPosition, onPosition, startValue }),
+  isPrimary: true,
+});
+
+const buildSecondaryControl = ({
+  offPosition,
+  onPosition,
+  startValue = 0.5,
+}: {
+  offPosition: Point;
+  onPosition: Point;
+  startValue?: number;
+}): SecondaryControl => {
+  const baseControl = buildControl({
+    offPosition,
+    onPosition,
+    startValue,
+  });
+
+  const white: RGB = { r: 255, g: 255, b: 255 };
+  const peach: RGB = { r: 255, g: 110, b: 97 };
+  const blue: RGB = { r: 7, g: 104, b: 159 };
+
+  const padding = 0.02;
+  const boxSize = 0.1;
+
+  const shapeCount = tombola.item([2, 3]);
+  const shapes: SecondaryControlShape[] = [];
+  for (let i = 0; i < shapeCount; i++) {
+    let color: RGBA;
+    // if (i === 0) {
+    //   color = {
+    //     ...white,
+    //     a: 1,
+    //   };
+    // } else {
+    color = {
+      ...tombola.item([peach, blue, white]),
+      a: tombola.item([0.5, 1.0]),
+    };
+    // }
+    shapes.push({
+      xOffset: tombola.rangeFloat(-padding, padding),
+      yOffset: tombola.rangeFloat(-padding, padding),
+      width: tombola.rangeFloat(boxSize - padding, boxSize + padding),
+      height: tombola.rangeFloat(boxSize - padding, boxSize + padding),
+      color,
+    });
+  }
+
+  return {
+    ...baseControl,
+    isPrimary: false,
+    shapes,
+  };
+};
+
 const controls = {
   [Scene.Snowfall]: {
-    primary: buildControl({
+    primary: buildPrimaryControl({
       offPosition: { x: 0.1, y: 0.8 },
       onPosition: { x: 0.4, y: 0.8 },
     }),
     secondary: [
-      buildControl({
+      buildSecondaryControl({
         offPosition: { x: 0.65, y: 0.1 },
         onPosition: { x: 0.65, y: 0.4 },
       }),
-      buildControl({
+      buildSecondaryControl({
         offPosition: { x: 0.85, y: 0.1 },
         onPosition: { x: 0.85, y: 0.4 },
       }),
@@ -292,7 +374,7 @@ const draw = (time: number) => {
   if (currentScene === Scene.Snowfall) {
     const sceneControls = controls[currentScene];
 
-    drawControl(sceneControls.primary, { isPrimary: true });
+    drawControl(sceneControls.primary);
     sceneControls.secondary.forEach((c) => drawControl(c));
   }
 
@@ -323,7 +405,7 @@ const draw = (time: number) => {
   requestAnimationFrame(draw);
 };
 
-const drawControl = (control: Control, { isPrimary = false } = {}) => {
+const drawControl = (control: PrimaryControl | SecondaryControl) => {
   const currentPositionUnit = lerp(
     control.offPosition,
     control.onPosition,
@@ -333,16 +415,20 @@ const drawControl = (control: Control, { isPrimary = false } = {}) => {
 
   // Draw control itself.
   wrapDraw(() => {
-    ctx.fillStyle = isPrimary ? "blue" : "lightblue";
-
-    ctx.beginPath();
-    if (isPrimary) {
+    if (control.isPrimary) {
       // Draw rectangle (for now).
       ctx.fillRect(currentPosition.x - 50, currentPosition.y - 50, 100, 100);
     } else {
-      // Draw circle (for now).
-      ctx.arc(currentPosition.x, currentPosition.y, 35, 0, 2 * Math.PI);
-      ctx.fill();
+      const c = control as SecondaryControl;
+      for (const shape of c.shapes) {
+        ctx.fillStyle = colorToString(shape.color);
+        ctx.fillRect(
+          currentPosition.x + unit(shape.xOffset) - unit(shape.width) / 2,
+          currentPosition.y + unit(shape.yOffset) - unit(shape.height) / 2,
+          unit(shape.width),
+          unit(shape.height)
+        );
+      }
     }
   });
 
@@ -431,11 +517,8 @@ const drawArrow = (arrowOrigin: Point, arrowAngle: number) => {
     ctx.closePath();
 
     ctx.fill();
-    ctx.stroke();
+    // ctx.stroke();
   });
-  // reset current transformation matrix to the identity matrix
-  // ctx.rotate(arrowAngle - 1 * (Math.PI / 2));
-  // ctx.translate(-arrowOrigin.x, -arrowOrigin.y);
 };
 
 export const startScene = async () => {
